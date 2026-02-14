@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSignup = (e) => {
+      e.preventDefault();
+      // Simulate signup
+      navigate('/dashboard');
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
@@ -27,7 +34,7 @@ const Signup = () => {
                 <p className="text-slate-400">Unlock your cognitive potential today.</p>
             </div>
 
-            <form className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Full Name</label>
                     <div className="relative group">

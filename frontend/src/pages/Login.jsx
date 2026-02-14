@@ -10,7 +10,7 @@ const Login = () => {
     const handleLogin = (e) => {
         e.preventDefault();
         // Simulate login
-        navigate('/');
+        navigate('/dashboard');
     };
 
     return (
