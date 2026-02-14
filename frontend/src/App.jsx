@@ -15,17 +15,19 @@ import DeepWorkMode from './pages/DeepWorkMode';
 import CognitiveInsights from './pages/CognitiveInsights';
 import RecoveryCycles from './pages/RecoveryCycles';
 import Settings from './pages/Settings';
-import { Zap, Menu, Bell, Sun, Moon } from 'lucide-react';
+import { Zap, Menu, Bell } from 'lucide-react';
 
-const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
+const DashboardLayout = ({ theme, userRole, energyLevel, metrics }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [activePath, setActivePath] = useState('/'); // Track active path for sidebar
-  const [energyLevel, setEnergyLevel] = useState(85);
+  // Removed local energyLevel state to use prop
   const [isReasoningOpen, setReasoningOpen] = useState(true);
 
   const handleSendMessage = (msg) => {
-    setEnergyLevel(Math.min(100, energyLevel + 5));
+    // Determine if we should update local state or if it's handled by parent
+    // For now, removing local setEnergyLevel as it's driven by backend
+    console.log("Message sent:", msg);
   };
 
   const location = useLocation();
@@ -71,10 +73,10 @@ const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
                     transition={{ delay: 0.2 }}
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
                     >
-                    <MetricCard title="Focus Streak" value="3.5h" unit="deep work" type="success" icon="focus" />
-                    <MetricCard title="Burnout Risk" value="12%" unit="stable" type="success" icon="burnout" />
-                    <MetricCard title="Recovery Quality" value="94" unit="sleep score" type="success" icon="recovery" />
-                    <MetricCard title="Cognitive Load" value="High" unit="peak performance" type="warning" icon="risk" />
+                    <MetricCard title="Tone Analysis" value={metrics?.tone || 'Neutral'} unit="sentiment" type="success" icon="focus" />
+                    <MetricCard title="Stress Level" value={metrics?.stress?.value || 'Low'} unit="risk factor" type={metrics?.stress?.type} icon="burnout" />
+                    <MetricCard title="Depression Risk" value={metrics?.depression?.value || 'None'} unit="clinical" type={metrics?.depression?.type} icon="recovery" />
+                    <MetricCard title="Anxiety Level" value={metrics?.anxiety?.value || 'Stable'} unit="cognitive load" type={metrics?.anxiety?.type} icon="risk" />
                     </motion.div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[500px]">
@@ -155,9 +157,7 @@ const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
               <span className="text-xs font-medium text-emerald-400">System Optimal</span>
             </div>
 
-            <button onClick={toggleTheme} className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors">
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+
 
             <button className="p-2 relative hover:bg-white/5 rounded-full text-slate-400 transition-colors">
               <Bell size={20} />
@@ -176,6 +176,7 @@ const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
 };
 
 import LandingPage from './pages/LandingPage';
+import { supabase } from './supabaseClient'; // Import Supabase client
 
 // Main Dashboard Layout Component
 
@@ -183,6 +184,16 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState('dark');
   const [userRole, setUserRole] = useState('user'); // 'user' | 'parent'
+  
+  // Real-time Data States
+  const [energyLevel, setEnergyLevel] = useState(null); // Null initially to show loading/default
+  const [metrics, setMetrics] = useState({
+      stress: { value: 'Low', type: 'success' },
+      anxiety: { value: 'Stable', type: 'success' },
+      depression: { value: 'None', type: 'success' },
+      tone: 'Neutral',
+      taskType: 'Medium'
+  });
 
   useEffect(() => {
     // Check API health
@@ -198,8 +209,90 @@ function App() {
     checkApiHealth();
 
     document.documentElement.setAttribute('data-theme', theme);
-    setTimeout(() => setLoading(false), 1500);
+
+    // Initial Data Fetch
+    const fetchLatestSession = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('analysis_sessions')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+            
+            if (error) {
+                console.error('Error fetching initial session:', error);
+            } else if (data) {
+                updateDashboard(data);
+            }
+        } catch (err) {
+            console.error('Unexpected error fetching session:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchLatestSession();
+
+    // Real-time Subscription
+    const channel = supabase
+        .channel('schema-db-changes')
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'analysis_sessions',
+            },
+            (payload) => {
+                console.log('New analysis session received:', payload.new);
+                updateDashboard(payload.new);
+            }
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
   }, [theme]);
+
+  const updateDashboard = (data) => {
+      if (!data) return;
+
+      // Update Energy
+      if (data.energy_score !== undefined) {
+          setEnergyLevel(data.energy_score);
+      }
+
+      // Update Metrics
+      setMetrics({
+          stress: { 
+              value: data.stress_level ? capitalize(data.stress_level) : 'Low',
+              type: getStatusType(data.stress_level)
+          },
+          anxiety: { 
+              value: data.anxiety_level ? capitalize(data.anxiety_level) : 'Stable',
+              type: getStatusType(data.anxiety_level) 
+          },
+          depression: { 
+              value: data.depression_level ? capitalize(data.depression_level) : 'None',
+              type: getStatusType(data.depression_level)
+          },
+          tone: data.tone || 'Neutral',
+          taskType: data.recommended_task_type || 'Medium'
+      });
+  };
+
+  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  
+  const getStatusType = (level) => {
+      switch(level) {
+          case 'low': return 'success';
+          case 'medium': return 'warning';
+          case 'high': return 'error'; // Error maps to red in MetricCard usually, or custom 'rose'
+          default: return 'success';
+      }
+  };
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -228,12 +321,12 @@ function App() {
         <Route path="/login" element={<Login setUserRole={setUserRole} />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/deep-work" element={<DeepWorkMode />} />
-        <Route path="/dashboard" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
-        <Route path="/recovery" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
-        <Route path="/insights" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
-        <Route path="/settings" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
-        <Route path="/tasks" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
-        <Route path="/*" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
+        <Route path="/dashboard" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} />} />
+        <Route path="/recovery" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} />} />
+        <Route path="/insights" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} />} />
+        <Route path="/settings" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} />} />
+        <Route path="/tasks" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} />} />
+        <Route path="/*" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} />} />
       </Routes>
     </>
   );
