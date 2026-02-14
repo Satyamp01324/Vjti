@@ -3,11 +3,11 @@ import { Home, List, Zap, Shield, Moon, Settings as SettingsIcon, Menu, Brain } 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 
-const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
+const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole }) => {
   const location = useLocation();
   const activePath = location.pathname;
 
-  const navItems = [
+  let navItems = [
     { name: 'Dashboard', icon: Home, path: '/dashboard', isNew: false },
     { name: 'Tasks', icon: List, path: '/tasks', isNew: false },
     { name: 'Cognitive Insights', icon: Brain, path: '/insights', isNew: true },
@@ -15,6 +15,10 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
     { name: 'Recovery Cycles', icon: Moon, path: '/recovery', isNew: false },
     { name: 'Settings', icon: SettingsIcon, path: '/settings', isNew: false },
   ];
+
+  if (userRole === 'parent') {
+      navItems = navItems.filter(item => ['Dashboard', 'Cognitive Insights', 'Recovery Cycles'].includes(item.name));
+  }
 
   return (
     <motion.div 

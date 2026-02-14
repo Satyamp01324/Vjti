@@ -17,10 +17,10 @@ import RecoveryCycles from './pages/RecoveryCycles';
 import Settings from './pages/Settings';
 import { Zap, Menu, Bell, Sun, Moon } from 'lucide-react';
 
-// Main Dashboard Layout Component
-const DashboardLayout = ({ theme, toggleTheme }) => {
+const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [activePath, setActivePath] = useState('/'); // Track active path for sidebar
   const [energyLevel, setEnergyLevel] = useState(85);
   const [isReasoningOpen, setReasoningOpen] = useState(true);
   
@@ -45,9 +45,6 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
                         className="md:col-span-4 lg:col-span-3 glass-card flex flex-col items-center justify-center p-6 relative overflow-visible min-h-[300px]"
                     >
                         <EnergyGauge energyLevel={energyLevel} />
-                        <div className="absolute bottom-4 right-4">
-                        <VoiceButton />
-                        </div>
                     </motion.div>
 
                     <motion.div 
@@ -58,13 +55,13 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
                     >
                         <div className="mb-8 text-center max-w-2xl mx-auto">
                         <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-emerald-400 via-emerald-200 to-slate-400 bg-clip-text text-transparent">
-                            Neural Synchronization Active
+                            {userRole === 'parent' ? 'Student Overview' : 'Neural Synchronization Active'}
                         </h2>
                         <p className="text-slate-400">
-                            Your cognitive bandwidth is <span className="text-emerald-400 font-semibold">{energyLevel}%</span>. Ready for complex problem solving.
+                            {userRole === 'parent' ? "Monitoring student's cognitive load and performance." : <>Your cognitive bandwidth is <span className="text-emerald-400 font-semibold">{energyLevel}%</span>. Ready for complex problem solving.</>}
                         </p>
                         </div>
-                        <ChatInput onSendMessage={handleSendMessage} />
+                        {userRole !== 'parent' && <ChatInput onSendMessage={handleSendMessage} />}
                     </motion.div>
                     </div>
 
@@ -74,10 +71,10 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
                     transition={{ delay: 0.2 }}
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
                     >
-                    <MetricCard title="Focus Streak" value="3.5h" unit="deep work" type="success" trend={12} icon="focus" />
-                    <MetricCard title="Burnout Risk" value="12%" unit="stable" type="success" trend={-5} icon="burnout" />
-                    <MetricCard title="Recovery Quality" value="94" unit="sleep score" type="success" trend={2} icon="recovery" />
-                    <MetricCard title="Cognitive Load" value="High" unit="peak performance" type="warning" trend={8} icon="risk" />
+                    <MetricCard title="Focus Streak" value="3.5h" unit="deep work" type="success" icon="focus" />
+                    <MetricCard title="Burnout Risk" value="12%" unit="stable" type="success" icon="burnout" />
+                    <MetricCard title="Recovery Quality" value="94" unit="sleep score" type="success" icon="recovery" />
+                    <MetricCard title="Cognitive Load" value="High" unit="peak performance" type="warning" icon="risk" />
                     </motion.div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[500px]">
@@ -99,6 +96,7 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
                 </div>
               );
           case '/tasks':
+             if (userRole === 'parent') return <div className="p-8 text-center text-slate-400">Access Restricted</div>;
              return (
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
@@ -116,6 +114,7 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
           case '/recovery':
               return <RecoveryCycles />;
           case '/settings':
+              if (userRole === 'parent') return <div className="p-8 text-center text-slate-400">Access Restricted</div>;
               return <Settings />;
           default:
               return (
@@ -133,6 +132,7 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
         toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        userRole={userRole}
       />
 
       <main className="flex-1 relative z-10 flex flex-col h-full overflow-hidden transition-all duration-300">
@@ -144,7 +144,9 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
             >
               <Menu size={20} />
             </button>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Hello, User</h1>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                {userRole === 'parent' ? 'Parent Portal' : 'Hello, User'}
+            </h1>
           </div>
           
           <div className="flex items-center gap-4">
@@ -173,9 +175,14 @@ const DashboardLayout = ({ theme, toggleTheme }) => {
   );
 };
 
+import LandingPage from './pages/LandingPage';
+
+// Main Dashboard Layout Component
+
 function App() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState('dark');
+  const [userRole, setUserRole] = useState('user'); // 'user' | 'parent'
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -204,23 +211,17 @@ function App() {
 
   return (
     <>
-      {/* Global Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none bg-slate-900">
-         <NeuralBackground />
-         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/50"></div>
-      </div>
-      
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login setUserRole={setUserRole} />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/deep-work" element={<DeepWorkMode />} />
-        <Route path="/dashboard" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} />} />
-        <Route path="/recovery" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} />} />
-        <Route path="/insights" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} />} />
-        <Route path="/settings" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} />} />
-        <Route path="/tasks" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} />} />
-        <Route path="/*" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} />} />
+        <Route path="/dashboard" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
+        <Route path="/recovery" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
+        <Route path="/insights" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
+        <Route path="/settings" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
+        <Route path="/tasks" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
+        <Route path="/*" element={<DashboardLayout theme={theme} toggleTheme={toggleTheme} userRole={userRole} />} />
       </Routes>
     </>
   );

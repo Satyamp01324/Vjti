@@ -31,14 +31,7 @@ const MetricCard = ({ title, value, unit, trend, type, icon }) => {
           <h3 className="text-sm font-medium text-slate-400">{title}</h3>
         </div>
         
-        {trend && (
-          <span className={clsx(
-            "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1",
-            trend > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
-          )}>
-            {trend > 0 ? '+' : ''}{trend}%
-          </span>
-        )}
+
       </div>
 
       <div className="mt-4 flex items-baseline gap-1">
