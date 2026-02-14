@@ -3,13 +3,14 @@ import { motion } from 'framer-motion';
 import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const Login = () => {
+const Login = ({ setUserRole }) => {
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = (e, role = 'user') => {
         e.preventDefault();
         // Simulate login
+        if (setUserRole) setUserRole(role);
         navigate('/dashboard');
     };
 
@@ -34,7 +35,7 @@ const Login = () => {
                     <p className="text-slate-400">Continue your deep work journey.</p>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={(e) => handleLogin(e, 'user')} className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300 ml-1">Email Address</label>
                         <div className="relative group">
@@ -69,13 +70,22 @@ const Login = () => {
                         </div>
                     </div>
 
-                    <button 
-                        type="submit"
-                        className="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-indigo-500/20 transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2 mt-6"
-                    >
-                        Sign In
-                        <ArrowRight size={20} />
-                    </button>
+                    <div className="flex gap-4 pt-2">
+                        <button 
+                            type="submit"
+                            className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-indigo-500/20 transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
+                        >
+                            Log In
+                            <ArrowRight size={20} />
+                        </button>
+                        <button 
+                            type="button"
+                            onClick={(e) => handleLogin(e, 'parent')}
+                            className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold py-3 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                        >
+                            Parent Login
+                        </button>
+                    </div>
                 </form>
 
                 <div className="mt-6 text-center text-sm text-slate-400">

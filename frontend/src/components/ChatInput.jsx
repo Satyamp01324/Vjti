@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, Zap, BrainCircuit, Clock } from 'lucide-react';
-import clsx from 'clsx'; // Assuming clsx is installed or I can just use template literals
+import clsx from 'clsx';
+import VoiceButton from './VoiceButton';
 
 const suggestions = [
   { id: 1, text: "Schedule deep work", icon: BrainCircuit },
@@ -86,7 +87,7 @@ const ChatInput = ({ onSendMessage }) => {
               <button type="button" className="p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/5">
                 <Sparkles size={18} />
               </button>
-              {/* Voice Input Placeholder - Will be replaced by VoiceButton component logic ideally */}
+              <VoiceButton />
             </div>
 
             <button
