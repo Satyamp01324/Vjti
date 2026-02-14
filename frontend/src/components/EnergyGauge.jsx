@@ -2,106 +2,66 @@ import React, { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 
 const EnergyGauge = ({ energyLevel = 85 }) => {
-  const [color, setColor] = useState('#10B981'); // Default Green
+  const [color, setColor] = useState('#10B981');
   const controls = useAnimation();
 
   useEffect(() => {
-    if (energyLevel > 70) setColor('#10B981'); // Emerald/Green
-    else if (energyLevel > 40) setColor('#F59E0B'); // Amber
-    else setColor('#EF4444'); // Red
-    
+    if (energyLevel > 70) setColor('#10B981');
+    else if (energyLevel > 40) setColor('#F59E0B');
+    else setColor('#EF4444');
+
     controls.start({
       strokeDashoffset: 440 - (440 * energyLevel) / 100,
-      transition: { duration: 0.8, ease: "easeInOut" }
+      transition: { duration: 1, ease: "easeInOut" }
     });
   }, [energyLevel, controls]);
 
+  const getLabel = () => {
+    if (energyLevel > 70) return 'Optimal';
+    if (energyLevel > 40) return 'Moderate';
+    return 'Low';
+  };
+
   return (
-    <div className="relative w-64 h-64 flex items-center justify-center">
-      {/* Outer Glow Ring */}
-      <motion.div 
-        className="absolute inset-0 rounded-full blur-xl opacity-30"
+    <div className="relative w-52 h-52 flex items-center justify-center">
+      {/* Subtle glow */}
+      <div
+        className="absolute inset-4 rounded-full blur-2xl opacity-15"
         style={{ backgroundColor: color }}
-        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       />
-      
-      {/* Floating Particles */}
-      {[...Array(5)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1 h-1 bg-white rounded-full opacity-50"
-          animate={{
-            x: [0, (Math.random() - 0.5) * 100],
-            y: [0, (Math.random() - 0.5) * 100],
-            opacity: [0, 1, 0]
-          }}
-          transition={{
-            duration: 3 + Math.random() * 2,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "easeInOut"
-          }}
-          style={{ top: '50%', left: '50%' }}
-        />
-      ))}
 
       {/* SVG Gauge */}
       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-        {/* Track */}
+        {/* Background track */}
         <circle
-          cx="100"
-          cy="100"
-          r="70"
+          cx="100" cy="100" r="70"
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
-          strokeWidth="10"
+          stroke="rgba(255,255,255,0.05)"
+          strokeWidth="8"
           strokeLinecap="round"
         />
-        
         {/* Progress */}
         <motion.circle
-          cx="100"
-          cy="100"
-          r="70"
+          cx="100" cy="100" r="70"
           fill="none"
           stroke={color}
-          strokeWidth="10"
+          strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray="440"
           strokeDashoffset="440"
           animate={controls}
-          filter="url(#glow)"
+          style={{ filter: `drop-shadow(0 0 6px ${color}40)` }}
         />
-        
-        {/* Glow Filter */}
-        <defs>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
       </svg>
 
-      {/* Center Text */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10">
-        <span className="text-4xl font-bold tracking-tighter drop-shadow-lg">
-          {energyLevel}%
+      {/* Center Content */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-bold text-white tracking-tight">{energyLevel}%</span>
+        <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mt-1">
+          {getLabel()}
         </span>
-        <span className="text-xs font-medium text-slate-400 uppercase tracking-widest mt-1">
-          Cognitive Bandwidth
-        </span>
+        <span className="text-[9px] text-slate-600 mt-0.5">Cognitive Bandwidth</span>
       </div>
-      
-      {/* Rotating Border */}
-      <motion.div
-        className="absolute inset-0 rounded-full border border-white/5 border-t-white/20"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-      />
     </div>
   );
 };

@@ -1,64 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  /* Fonts */
   --font-inter: "Inter", sans-serif;
-
-  /* Colors */
-  --color-deep-slate: #0F172A;
-
-  /* Animations */
+  --color-deep-slate: #0a0e1a;
   --animate-spin-slow: spin 8s linear infinite;
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-float: float 6s ease-in-out infinite;
   --animate-shine: shine 2s linear infinite;
+  --animate-reverse-spin: reverse-spin 10s linear infinite;
 
   @keyframes float {
-
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-
-    50% {
-      transform: translateY(-10px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 
   @keyframes shine {
-    from {
-      transform: translateX(-100%);
-    }
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
 
-    to {
-      transform: translateX(100%);
-    }
+  @keyframes reverse-spin {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
   }
 }
 
 :root {
   color-scheme: dark;
-  --bg-primary: #0F172A;
+  --bg-primary: #0a0e1a;
   --text-primary: #f8fafc;
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --sidebar-bg: rgba(15, 23, 42, 0.5);
-  /* Slate 900/50 */
-}
-
-/* Light Mode Variables */
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg-primary: #F8FAFC;
-  /* Slate 50 */
-  --text-primary: #0F172A;
-  /* Slate 900 */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  /* More opaque for light mode */
-  --glass-border: rgba(15, 23, 42, 0.05);
-  --sidebar-bg: rgba(255, 255, 255, 0.8);
-  --color-deep-slate: #f1f5f9;
-  /* Override */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --sidebar-bg: #0d1117;
 }
 
 body {
@@ -72,24 +45,19 @@ body {
   font-family: var(--font-inter);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 @layer utilities {
-
-  /* Glassmorphism Utilities */
   .glass-card {
     background-color: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    @apply backdrop-blur-xl shadow-lg rounded-2xl transition-all duration-300 ease-in-out;
+    @apply backdrop-blur-xl shadow-lg rounded-2xl transition-all duration-200 ease-in-out;
   }
 
   .glass-card:hover {
-    @apply scale-[1.02] shadow-2xl;
-    /* border-color: rgba(255,255,255,0.2);  Manual override based on theme? */
+    border-color: rgba(255,255,255,0.08);
   }
 
-  /* Background Effects */
   .bg-noise {
     position: fixed;
     top: 0;
@@ -98,15 +66,15 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.03;
+    opacity: 0.02;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 }
 
-/* Custom Scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -114,10 +82,19 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.2);
+  background: rgba(100, 116, 139, 0.15);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgba(100, 116, 139, 0.3);
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
