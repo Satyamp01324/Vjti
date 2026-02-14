@@ -23,7 +23,7 @@ const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
   const [activePath, setActivePath] = useState('/'); // Track active path for sidebar
   const [energyLevel, setEnergyLevel] = useState(85);
   const [isReasoningOpen, setReasoningOpen] = useState(true);
-  
+
   const handleSendMessage = (msg) => {
     setEnergyLevel(Math.min(100, energyLevel + 5));
   };
@@ -127,9 +127,9 @@ const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
 
   return (
     <div className={`flex h-screen overflow-hidden transition-colors duration-700 relative`}>
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} 
+      <Sidebar
+        isOpen={isSidebarOpen}
+        toggleSidebar={() => setSidebarOpen(!isSidebarOpen)}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         userRole={userRole}
@@ -138,7 +138,7 @@ const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
       <main className="flex-1 relative z-10 flex flex-col h-full overflow-hidden transition-all duration-300">
         <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-slate-900/50 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setSidebarOpen(!isSidebarOpen)}
               className="md:hidden p-2 hover:bg-white/5 rounded-lg text-slate-400"
             >
@@ -148,13 +148,13 @@ const DashboardLayout = ({ theme, toggleTheme, userRole }) => {
                 {userRole === 'parent' ? 'Parent Portal' : 'Hello, User'}
             </h1>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-               <span className="text-xs font-medium text-emerald-400">System Optimal</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-xs font-medium text-emerald-400">System Optimal</span>
             </div>
-            
+
             <button onClick={toggleTheme} className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors">
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
@@ -185,12 +185,24 @@ function App() {
   const [userRole, setUserRole] = useState('user'); // 'user' | 'parent'
 
   useEffect(() => {
+    // Check API health
+    const checkApiHealth = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/health`);
+        const data = await response.json();
+        console.log('Backend health:', data);
+      } catch (error) {
+        console.error('Error connecting to backend:', error);
+      }
+    };
+    checkApiHealth();
+
     document.documentElement.setAttribute('data-theme', theme);
     setTimeout(() => setLoading(false), 1500);
   }, [theme]);
 
   const toggleTheme = () => {
-     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
   if (loading) {
@@ -198,9 +210,9 @@ function App() {
       <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-50">
         <NeuralBackground />
         <motion.div
-           initial={{ opacity: 0, scale: 0.8 }}
-           animate={{ opacity: 1, scale: 1 }}
-           className="relative z-10 flex flex-col items-center gap-4 text-emerald-400"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 flex flex-col items-center gap-4 text-emerald-400"
         >
           <div className="w-16 h-16 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
           <span className="text-lg font-medium animate-pulse">Initializing NeuroPilot...</span>
