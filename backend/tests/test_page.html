@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Models Test - Let Go 3.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .models-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .model-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .model-card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        textarea, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f5f5f5;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .metric-name {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .progress-bar {
+            width: 50%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-left: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        
+        .high { color: #e74c3c; }
+        .medium { color: #f39c12; }
+        .low { color: #27ae60; }
+        
+        .high .progress-fill { background: #e74c3c; }
+        .medium .progress-fill { background: #f39c12; }
+        .low .progress-fill { background: #27ae60; }
+        
+        .info-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .info-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .info-section pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        
+        .examples {
+            margin-top: 15px;
+        }
+        
+        .example-btn {
+            display: inline-block;
+            background: #e0e0e0;
+            color: #333;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .example-btn:hover {
+            background: #d0d0d0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 ML Models Test Interface</h1>
+        
+        <div class="models-container">
+            <!-- Text Classification Model -->
+            <div class="model-card">
+                <h2>📝 Text Classification</h2>
+                <p style="color: #666; margin-bottom: 15px;">Analyze text for mental health indicators (Depression, Anxiety, Stress)</p>
+                
+                <div class="form-group">
+                    <label for="textInput">Enter text to analyze:</label>
+                    <textarea id="textInput" placeholder="I feel very tired and anxious today..."></textarea>
+                </div>
+                
+                <div class="examples">
+                    <strong>Examples:</strong>
+                    <span class="example-btn" onclick="setTextExample(0)">Anxious</span>
+                    <span class="example-btn" onclick="setTextExample(1)">Happy</span>
+                    <span class="example-btn" onclick="setTextExample(2)">Stressed</span>
+                    <span class="example-btn" onclick="setTextExample(3)">Hindi</span>
+                </div>
+                
+                <button onclick="analyzeText()" id="textBtn">Analyze Text</button>
+                
+                <div id="textResult" class="result">
+                    <h3>Results:</h3>
+                    <div id="textMetrics"></div>
+                </div>
+            </div>
+            
+            <!-- Voice Input Model -->
+            <div class="model-card">
+                <h2>🎤 Voice Input Analysis</h2>
+                <p style="color: #666; margin-bottom: 15px;">Record or upload audio for real-time transcription and analysis</p>
+                
+                <div class="form-group">
+                    <label>Record Audio:</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button onclick="startRecording()" id="recordBtn" style="width: auto; flex: 1; background: #e74c3c;">
+                            🎙️ Start Recording
+                        </button>
+                        <button onclick="stopRecording()" id="stopBtn" style="width: auto; flex: 1; background: #95a5a6;" disabled>
+                            ⏹️ Stop
+                        </button>
+                    </div>
+                    <div id="recordingStatus" style="padding: 10px; background: #f5f5f5; border-radius: 5px; margin-bottom: 15px; display: none;">
+                        <span id="recordingTime">00:00</span> - Recording...
+                    </div>
+                    <audio id="audioPlayback" controls style="width: 100%; margin-bottom: 15px; display: none;"></audio>
+                </div>
+                
+                <div style="text-align: center; margin: 15px 0; color: #999;">OR</div>
+                
+                <div class="form-group">
+                    <label for="audioFile">Upload Audio File:</label>
+                    <input type="file" id="audioFile" accept="audio/*" style="padding: 10px;">
+                </div>
+                
+                <button onclick="analyzeVoiceInput()" id="voiceInputBtn">Analyze Voice</button>
+                
+                <div id="voiceInputResult" class="result">
+                    <h3>Transcription:</h3>
+                    <div id="transcription" style="background: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-style: italic;"></div>
+                    <h3>Analysis:</h3>
+                    <div id="voiceInputMetrics"></div>
+                </div>
+            </div>
+            
+            <!-- Voice Analysis Model (Text-based) -->
+            <div class="model-card">
+                <h2>🎤 Voice/Text Analysis</h2>
+                <p style="color: #666; margin-bottom: 15px;">Voice model using same mental health analysis</p>
+                
+                <div class="form-group">
+                    <label for="voiceInput">Enter text for analysis:</label>
+                    <textarea id="voiceInput" placeholder="I am feeling really stressed and overwhelmed today..."></textarea>
+                </div>
+                
+                <div class="examples">
+                    <strong>Examples:</strong>
+                    <span class="example-btn" onclick="setVoiceExample(0)">Overwhelmed</span>
+                    <span class="example-btn" onclick="setVoiceExample(1)">Excited</span>
+                    <span class="example-btn" onclick="setVoiceExample(2)">Tired</span>
+                </div>
+                
+                <button onclick="analyzeVoice()" id="voiceBtn">Analyze</button>
+                
+                <div id="voiceResult" class="result">
+                    <h3>Results:</h3>
+                    <div id="voiceMetrics"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- API Info -->
+        <div class="info-section">
+            <h2>ℹ️ API Information</h2>
+            <p style="margin-bottom: 10px;">Backend API is running at: <strong>http://127.0.0.1:8000</strong></p>
+            <p>API Documentation: <a href="http://127.0.0.1:8000/docs" target="_blank" style="color: #667eea;">http://127.0.0.1:8000/docs</a></p>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+        
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingStartTime;
+        let recordingTimer;
+        let recordedBlob = null;
+        
+        const textExamples = [
+            "I feel very tired and anxious today.",
+            "Everything is going great! I'm feeling wonderful.",
+            "I can't sleep and feel overwhelmed with everything.",
+            "मुझे बहुत तनाव हो रहा है"
+        ];
+        
+        const voiceExamples = [
+            "I am feeling really stressed and overwhelmed today",
+            "I'm happy and excited about the future!",
+            "I feel exhausted and can't focus on anything"
+        ];
+        
+        function setTextExample(index) {
+            document.getElementById('textInput').value = textExamples[index];
+        }
+        
+        function setVoiceExample(index) {
+            document.getElementById('voiceInput').value = voiceExamples[index];
+        }
+        
+        // Voice Recording Functions
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(recordedBlob);
+                    const audioPlayback = document.getElementById('audioPlayback');
+                    audioPlayback.src = audioUrl;
+                    audioPlayback.style.display = 'block';
+                    
+                    // Stop all tracks
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                recordingStartTime = Date.now();
+                
+                // Update UI
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('recordingStatus').style.display = 'block';
+                
+                // Start timer
+                recordingTimer = setInterval(updateRecordingTime, 1000);
+                
+            } catch (error) {
+                alert('Error accessing microphone: ' + error.message);
+                console.error('Microphone error:', error);
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                clearInterval(recordingTimer);
+                
+                // Update UI
+                document.getElementById('recordBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('recordingStatus').style.display = 'none';
+            }
+        }
+        
+        function updateRecordingTime() {
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('recordingTime').textContent = `${minutes}:${seconds}`;
+        }
+        
+        async function analyzeVoiceInput() {
+            const audioFile = document.getElementById('audioFile').files[0];
+            const audioToUpload = recordedBlob || audioFile;
+            
+            if (!audioToUpload) {
+                alert('Please record audio or upload a file first');
+                return;
+            }
+            
+            const btn = document.getElementById('voiceInputBtn');
+            btn.disabled = true;
+            btn.textContent = 'Transcribing...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('audio', audioToUpload, recordedBlob ? 'recording.webm' : audioFile.name);
+                
+                const response = await fetch(`${API_BASE}/api/voice-input`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayVoiceInputResults(data);
+                } else {
+                    alert('Error: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error connecting to API: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze Voice';
+            }
+        }
+        
+        function displayVoiceInputResults(data) {
+            const resultDiv = document.getElementById('voiceInputResult');
+            const transcriptionDiv = document.getElementById('transcription');
+            const metricsDiv = document.getElementById('voiceInputMetrics');
+            
+            // Get transcription details
+            const transcription = data.transcription;
+            const languageName = transcription.language_name || transcription.language || 'Unknown';
+            const languageCode = transcription.language || 'unknown';
+            const method = transcription.method || 'unknown';
+            const methodEmoji = method.includes('groq') ? '🚀' : '💻';
+            const methodLabel = method.includes('groq') ? 'Groq (Fast)' : 'Local Whisper';
+            
+            // Display transcription with language info
+            transcriptionDiv.innerHTML = `
+                <strong>"${transcription.text || data.transcription}"</strong>
+                <div style="margin-top: 12px; display: flex; gap: 20px; font-size: 0.9em; color: #666;">
+                    <div>
+                        <span style="display: inline-block; width: 24px;">🌍</span>
+                        <strong>Language:</strong> ${languageName} (${languageCode})
+                    </div>
+                    <div>
+                        <span style="display: inline-block; width: 24px;">${methodEmoji}</span>
+                        <strong>Method:</strong> ${methodLabel}
+                    </div>
+                </div>
+            `;
+            
+            // Display analysis
+            let html = '';
+            const analysis = data.analysis;
+            
+            ['Depression', 'Anxiety', 'Stress'].forEach(metric => {
+                const value = analysis[metric] || 0;
+                const level = getLevel(value);
+                const percentage = (value * 100).toFixed(1);
+                
+                html += `
+                    <div class="metric ${level}">
+                        <span class="metric-name">${metric}</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <span class="metric-value">${percentage}%</span>
+                    </div>
+                `;
+            });
+            
+            html += `<p style="margin-top: 10px; color: #666;">Source: ${analysis.source || 'unknown'}</p>`;
+            
+            metricsDiv.innerHTML = html;
+            resultDiv.classList.add('show');
+        }
+        
+        async function analyzeText() {
+            const text = document.getElementById('textInput').value;
+            if (!text.trim()) {
+                alert('Please enter some text to analyze');
+                return;
+            }
+            
+            const btn = document.getElementById('textBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/text-analysis`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayTextResults(data.analysis);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error connecting to API: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze Text';
+            }
+        }
+        
+        async function analyzeVoice() {
+            const text = document.getElementById('voiceInput').value;
+            if (!text.trim()) {
+                alert('Please enter some text to analyze');
+                return;
+            }
+            
+            const btn = document.getElementById('voiceBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/voice-analysis`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ features: { text } })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayVoiceResults(data.analysis);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error connecting to API: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze';
+            }
+        }
+        
+        function getLevel(value) {
+            if (value > 0.5) return 'high';
+            if (value > 0.2) return 'medium';
+            return 'low';
+        }
+        
+        function displayTextResults(analysis) {
+            const resultDiv = document.getElementById('textResult');
+            const metricsDiv = document.getElementById('textMetrics');
+            
+            let html = '';
+            
+            ['Depression', 'Anxiety', 'Stress'].forEach(metric => {
+                const value = analysis[metric] || 0;
+                const level = getLevel(value);
+                const percentage = (value * 100).toFixed(1);
+                
+                html += `
+                    <div class="metric ${level}">
+                        <span class="metric-name">${metric}</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <span class="metric-value">${percentage}%</span>
+                    </div>
+                `;
+            });
+            
+            html += `<p style="margin-top: 10px; color: #666;">Source: ${analysis.source || 'unknown'}</p>`;
+            
+            metricsDiv.innerHTML = html;
+            resultDiv.classList.add('show');
+        }
+        
+        function displayVoiceResults(analysis) {
+            const resultDiv = document.getElementById('voiceResult');
+            const metricsDiv = document.getElementById('voiceMetrics');
+            
+            let html = '';
+            
+            if (analysis.prediction && typeof analysis.prediction === 'object') {
+                Object.entries(analysis.prediction).forEach(([metric, value]) => {
+                    const level = getLevel(value);
+                    const percentage = (value * 100).toFixed(1);
+                    
+                    html += `
+                        <div class="metric ${level}">
+                            <span class="metric-name">${metric}</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${percentage}%"></div>
+                            </div>
+                            <span class="metric-value">${percentage}%</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `<p style="margin-top: 10px; color: #666;">Model: ${analysis.model_type || 'unknown'}</p>`;
+            
+            metricsDiv.innerHTML = html;
+            resultDiv.classList.add('show');
+        }
+    </script>
+</body>
+</html>
