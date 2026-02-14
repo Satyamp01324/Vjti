@@ -1,24 +1,197 @@
-# Node
-node_modules/
-npm-debug.log
-yarn-error.log
-dist/
+# ============================================================
+# ENVIRONMENT VARIABLES (keep secrets out of repo!)
+# ============================================================
 .env
-.DS_Store
+.env.local
+.env.*.local
+*.env
 
-# Python
+# ============================================================
+# PYTHON / FASTAPI
+# ============================================================
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+
+# Virtual environments
 venv/
 .venv/
 env/
-.env
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Logs
 *.log
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Supabase
-supabase/functions/*/deno.log
+# ============================================================
+# ML MODELS - EXCLUDED (too large for GitHub)
+# ============================================================
+# All model files (any location)
+*.pkl
+*.pth
+*.h5
+*.model
+*.bin
+*.onnx
+*.safetensors
 
-# IDE
+# Specific backend model artifacts
+backend/models/artifacts/
+!backend/models/artifacts/.gitkeep
+
+# ============================================================
+# AUDIO FILES (test recordings, generated files)
+# ============================================================
+backend/audio_files/*.mp3
+backend/audio_files/*.wav
+backend/audio_files/*.webm
+backend/audio_files/*.m4a
+*.mp3
+*.wav
+*.webm
+*.m4a
+# Keep the folder structure
+!backend/audio_files/.gitkeep
+
+# ============================================================
+# BACKUP / OLD FILES
+# ============================================================
+*_old.py
+*_backup.py
+*.bak
+*.tmp
+
+# ============================================================
+# NODE.JS / REACT / VITE
+# ============================================================
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+*.local
+
+# Vite cache
+.vite/
+
+# Package manager locks (optional - some prefer to track these)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ============================================================
+# IDE / EDITOR
+# ============================================================
+# VSCode
 .vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.code-workspace
+
+# JetBrains (PyCharm, WebStorm, etc.)
 .idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# ============================================================
+# OS SPECIFIC
+# ============================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================================
+# SUPABASE
+# ============================================================
+supabase/functions/*/deno.log
+.supabase/
+
+# ============================================================
+# MISC
+# ============================================================
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Certificates / keys
+*.pem
+*.key
+*.cert
+*.crt
+
+# Database files (if using local SQLite for dev)
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.cache
