@@ -7,6 +7,7 @@ automatically persisted to Supabase.
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from dotenv import load_dotenv
 import os
 
@@ -27,6 +28,19 @@ from core.energy_flow import calculate_energy_score, get_task_recommendation
 from models.text_classification import clinical_predict
 from models.voice_analysis import voice_predict, get_model_info
 from core.voice_transcription import get_model_info as get_whisper_info
+
+# --- Auth & Cognitive Scheduler ---
+from core import auth as auth_service
+from core.cognitive_scheduler import (
+    schedule_task,
+    schedule_multiple_tasks,
+    complete_task_api,
+    get_cognitive_stats,
+    get_energy as get_scheduler_energy,
+    parse_natural_language_task,
+    get_mental_energy,
+    calculate_recovery_need,
+)
 
 # ============================================
 # App & CORS
@@ -66,6 +80,31 @@ class EnergyRequest(BaseModel):
     depression_level: str
     tone: str
     base_energy: int = 70
+
+# --- Auth models ---
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    full_name: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class ProfileUpdateRequest(BaseModel):
+    user_id: str
+    full_name: Optional[str] = None
+
+# --- Scheduler models ---
+class ScheduleTaskRequest(BaseModel):
+    task: str
+
+class ScheduleMultipleRequest(BaseModel):
+    tasks: str
+
+class CompleteTaskRequest(BaseModel):
+    task_name: str
+    actual_difficulty: int
 
 
 # ============================================
@@ -262,3 +301,118 @@ async def test_supabase():
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+
+# ============================================
+# AUTH ENDPOINTS (Supabase Auth + users_profile)
+# ============================================
+
+@app.post("/api/auth/register")
+async def register(request: RegisterRequest):
+    """Register a new user. Creates Supabase Auth entry + users_profile row."""
+    if not request.email or not request.password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+    if len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    result = auth_service.register(request.email, request.password, request.full_name)
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    """Authenticate a user and return session tokens."""
+    if not request.email or not request.password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+    result = auth_service.login(request.email, request.password)
+    if result["status"] == "error":
+        raise HTTPException(status_code=401, detail=result["error"])
+    return result
+
+
+@app.get("/api/auth/profile/{user_id}")
+async def get_profile(user_id: str):
+    """Fetch a user's profile from users_profile."""
+    result = auth_service.get_profile(user_id)
+    if result["status"] == "error":
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@app.put("/api/auth/profile")
+async def update_profile(request: ProfileUpdateRequest):
+    """Update a user's profile in users_profile."""
+    result = auth_service.update_profile(request.user_id, request.full_name)
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+# ============================================
+# COGNITIVE SCHEDULER ENDPOINTS (feature_2)
+# ============================================
+
+@app.post("/api/scheduler/parse-task")
+async def api_parse_task(request: ScheduleTaskRequest):
+    """Parse a natural-language task description without scheduling it."""
+    try:
+        parsed = parse_natural_language_task(request.task)
+        energy = get_mental_energy()
+        recovery = calculate_recovery_need(parsed, energy)
+        return {"status": "success", "task": parsed, "energy": energy, "recovery": recovery}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/scheduler/schedule")
+async def api_schedule_task(request: ScheduleTaskRequest):
+    """
+    Schedule a single task end-to-end:
+      parse → energy check → find optimal slot → create Google Calendar event.
+    """
+    try:
+        result = schedule_task(request.task)
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("error"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/scheduler/schedule-multiple")
+async def api_schedule_multiple(request: ScheduleMultipleRequest):
+    """Schedule multiple tasks parsed from a single description."""
+    try:
+        result = schedule_multiple_tasks(request.tasks)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/scheduler/complete-task")
+async def api_complete_task(request: CompleteTaskRequest):
+    """Mark a task as complete and update cognitive state."""
+    try:
+        if not 1 <= request.actual_difficulty <= 10:
+            raise HTTPException(status_code=400, detail="actual_difficulty must be 1-10")
+        result = complete_task_api(request.task_name, request.actual_difficulty)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/scheduler/stats")
+async def api_cognitive_stats():
+    """Get current cognitive state: fatigue, streak, achievements, recent tasks."""
+    return get_cognitive_stats()
+
+
+@app.get("/api/scheduler/energy")
+async def api_scheduler_energy():
+    """Get current mental energy level with circadian-rhythm context."""
+    return get_scheduler_energy()
