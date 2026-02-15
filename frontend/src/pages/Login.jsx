@@ -1,87 +1,135 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
-const Login = () => {
+const Login = ({ setUserRole }) => {
     const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e, role = 'user') => {
         e.preventDefault();
-        // Simulate login
-        navigate('/dashboard');
+        setLoading(true);
+        setError('');
+
+        try {
+            const { data, error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (signInError) {
+                setError(signInError.message);
+            } else {
+                if (setUserRole) setUserRole(role);
+                navigate('/dashboard');
+            }
+        } catch (err) {
+            setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Effects */}
+        <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Background */}
             <div className="fixed inset-0 z-0 pointer-events-none">
-                <div className="bg-noise absolute inset-0 opacity-[0.03]"></div>
-                <div className="absolute top-[-20%] left-[-20%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse-slow"></div>
+                <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] bg-indigo-500/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-[-20%] left-[-20%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[120px]" />
             </div>
 
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 relative z-10 shadow-2xl"
+            <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-md bg-slate-800/40 border border-white/[0.06] rounded-2xl p-8 relative z-10"
             >
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 mb-4">
-                        <Zap className="w-6 h-6 fill-current" />
+                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500 text-white mb-4">
+                        <Zap className="w-5 h-5 fill-current" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
-                    <p className="text-slate-400">Continue your deep work journey.</p>
+                    <h2 className="text-xl font-semibold text-white mb-1">Welcome Back</h2>
+                    <p className="text-sm text-slate-400">Sign in to your NeuroPilot workspace.</p>
                 </div>
 
+                {error && (
+                    <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-300">
+                        {error}
+                    </div>
+                )}
+
                 <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Email Address</label>
-                        <div className="relative group">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
-                            <input 
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-slate-400 ml-0.5">Email Address</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                            <input
                                 type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@example.com"
-                                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-10 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                required
+                                className="w-full bg-[#151922] border border-white/[0.06] rounded-lg px-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/30 transition-all"
                             />
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                            <label className="font-medium text-slate-300 ml-1">Password</label>
-                            <a href="#" className="text-indigo-400 hover:text-indigo-300 transition-colors">Forgot?</a>
-                        </div>
-                        <div className="relative group">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
-                            <input 
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-slate-400 ml-0.5">Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                            <input
                                 type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-10 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                required
+                                className="w-full bg-[#151922] border border-white/[0.06] rounded-lg px-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/30 transition-all"
                             />
-                            <button 
+                            <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
                             >
-                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
                         </div>
                     </div>
 
-                    <button 
+                    <button
                         type="submit"
-                        className="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-indigo-500/20 transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2 mt-6"
+                        disabled={loading}
+                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 mt-6 text-sm disabled:opacity-50"
                     >
-                        Sign In
-                        <ArrowRight size={20} />
+                        {loading ? (
+                            <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                            <>
+                                Sign In
+                                <ArrowRight size={16} />
+                            </>
+                        )}
                     </button>
+
+                    {/* <button
+                        type="button"
+                        onClick={(e) => handleLogin(e, 'parent')}
+                        disabled={loading}
+                        className="w-full bg-white/[0.04] border border-white/[0.06] text-slate-300 font-medium py-2.5 rounded-lg hover:bg-white/[0.06] transition-all duration-200 text-sm"
+                    >
+                        Sign in as Parent
+                    </button> */}
                 </form>
 
-                <div className="mt-6 text-center text-sm text-slate-400">
-                    New to NeuroPilot?{' '}
-                    <Link to="/signup" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-                        Create account
+                <div className="mt-6 text-center text-xs text-slate-500">
+                    Don't have an account?{' '}
+                    <Link to="/signup" className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+                        Create one
                     </Link>
                 </div>
             </motion.div>

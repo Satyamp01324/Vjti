@@ -1,0 +1,32 @@
+{
+  "fatigue_counter": 5,
+  "completed_tasks": [],
+  "task_history": [
+    {
+      "task_name": "DSA",
+      "difficulty": 5,
+      "duration_minutes": 45,
+      "category": "Medium Focus",
+      "subject_area": "General",
+      "urgency": "Medium",
+      "prerequisites": [],
+      "cognitive_type": "Problem-Solving",
+      "deadline": null,
+      "deadline_text": null,
+      "preferred_time_of_day": "Flexible",
+      "requires_physical_space": false,
+      "is_physical_activity": false,
+      "target_date": null,
+      "is_social_event": false,
+      "timestamp": "2026-02-14T16:47:46.120171",
+      "status": "scheduled"
+    }
+  ],
+  "current_focus_streak": 1,
+  "total_deep_work_minutes": 45,
+  "last_break_time": null,
+  "daily_streaks": 0,
+  "total_tasks_completed": 0,
+  "achievements": [],
+  "energy_patterns": {}
+}
