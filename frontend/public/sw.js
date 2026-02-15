@@ -1,11 +1,16 @@
-// Service Worker for NeuroPilot PWA
 const CACHE_NAME = 'neuropilot-v1';
-const urlsToCache = [
+const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
 ];
 
+// Install: cache app shell
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    })
 // Install event
 self.addEventListener('install', (event) => {
   event.waitUntil(

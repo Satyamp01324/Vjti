@@ -195,3 +195,6 @@ supabase/functions/*/deno.log
 tmp/
 temp/
 *.cache
+
+
+ngrok/
