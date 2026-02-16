@@ -187,6 +187,7 @@ def run_voice_pipeline(
         return {
             "status": "error",
             "error": transcription.get("error", "Transcription failed"),
+            "details": transcription.get("details"),
         }
 
     transcribed_text = transcription.get("text", "").strip()

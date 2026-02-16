@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Bell, Check, Moon, Monitor, Clock, Brain, Globe, Shield, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 const SettingsSection = ({ title, description, children }) => (
   <div className="mb-8">
@@ -62,6 +64,18 @@ const Settings = () => {
   const [language, setLanguage] = useState('English');
   const [focusDuration, setFocusDuration] = useState('45 min');
   const [autoSaver, setAutoSaver] = useState(true);
+
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) console.error('Error signing out:', error.message);
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -127,7 +141,10 @@ const Settings = () => {
       </SettingsSection>
 
       <div className="flex justify-end pt-4 border-t border-white/[0.04]">
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors text-xs font-medium">
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors text-xs font-medium"
+        >
           <LogOut size={14} />
           Sign Out
         </button>

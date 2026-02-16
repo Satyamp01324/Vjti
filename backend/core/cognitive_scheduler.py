@@ -16,6 +16,7 @@ import datetime
 import os
 import json
 import re
+import traceback
 from typing import Dict, List, Tuple, Optional
 
 from google import genai
@@ -23,6 +24,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+
+from core.supabase_client import supabase
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -33,6 +36,54 @@ COGNITIVE_STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "cognitive_
 
 # Gemini client
 _gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+
+
+# ─────────────────────────────────────────────
+# EMOTIONAL STATE FROM DB (Pipeline 1 → Pipeline 2)
+# ─────────────────────────────────────────────
+def fetch_emotional_state_from_db() -> Dict:
+    """
+    Fetch the latest emotional analysis from Supabase.
+    This bridges Pipeline 1 (text/voice analysis) → Pipeline 2 (scheduler).
+    Returns depression, anxiety, stress levels + energy score from the most recent session.
+    """
+    default = {
+        "has_data": False,
+        "depression_score": 0.0, "anxiety_score": 0.0, "stress_score": 0.0,
+        "depression_level": "low", "anxiety_level": "low", "stress_level": "low",
+        "tone": "neutral", "energy_score": 70, "energy_category": "high_energy",
+        "source": "default",
+    }
+    try:
+        resp = (
+            supabase.table("analysis_sessions")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not resp.data:
+            return default
+        row = resp.data[0]
+        return {
+            "has_data": True,
+            "depression_score": row.get("depression_score", 0.0) or 0.0,
+            "anxiety_score": row.get("anxiety_score", 0.0) or 0.0,
+            "stress_score": row.get("stress_score", 0.0) or 0.0,
+            "depression_level": row.get("depression_level", "low") or "low",
+            "anxiety_level": row.get("anxiety_level", "low") or "low",
+            "stress_level": row.get("stress_level", "low") or "low",
+            "tone": row.get("tone", "neutral") or "neutral",
+            "energy_score": row.get("energy_score", 70) or 70,
+            "energy_category": row.get("energy_category", "high_energy") or "high_energy",
+            "source": "supabase",
+            "session_id": row.get("id"),
+            "input_text": row.get("input_text", ""),
+            "created_at": row.get("created_at"),
+        }
+    except Exception as e:
+        print(f"[scheduler] Could not fetch emotional state from DB: {e}")
+        return default
 
 
 # ─────────────────────────────────────────────
@@ -254,10 +305,16 @@ def parse_natural_language_task(user_input: str) -> Dict:
 
 
 # ─────────────────────────────────────────────
-# MENTAL ENERGY ENGINE
+# MENTAL ENERGY ENGINE (now uses DB emotional state)
 # ─────────────────────────────────────────────
-def get_mental_energy() -> Dict:
-    """Real-time mental bandwidth with circadian rhythm awareness."""
+def get_mental_energy(emotional_state: Optional[Dict] = None) -> Dict:
+    """
+    Real-time mental bandwidth with circadian rhythm awareness
+    AND emotional state from Pipeline 1 (depression/anxiety/stress from DB).
+    """
+    if emotional_state is None:
+        emotional_state = fetch_emotional_state_from_db()
+
     now = datetime.datetime.now()
     hour = now.hour
     day_of_week = now.weekday()
@@ -285,7 +342,17 @@ def get_mental_energy() -> Dict:
         if mins > 90:
             break_penalty = 2
 
-    final = max(1, base - fatigue_penalty + weekend_bonus - break_penalty)
+    # ── NEW: Emotional state penalty from DB ──
+    emotional_penalty = 0.0
+    if emotional_state.get("has_data"):
+        dep = emotional_state.get("depression_score", 0)
+        anx = emotional_state.get("anxiety_score", 0)
+        stress = emotional_state.get("stress_score", 0)
+        # High depression/anxiety/stress reduce available mental energy
+        emotional_penalty = (dep * 2.5) + (anx * 1.5) + (stress * 1.0)
+        emotional_penalty = min(emotional_penalty, 5)  # cap at 5
+
+    final = max(1, base - fatigue_penalty + weekend_bonus - break_penalty - emotional_penalty)
 
     if final >= 8:
         rec = "🔥 Peak Performance – Tackle your hardest tasks now!"
@@ -303,6 +370,15 @@ def get_mental_energy() -> Dict:
         "base_energy": base,
         "fatigue_penalty": fatigue_penalty,
         "break_penalty": break_penalty,
+        "emotional_penalty": round(emotional_penalty, 2),
+        "emotional_state": {
+            "depression": emotional_state.get("depression_level", "low"),
+            "anxiety": emotional_state.get("anxiety_level", "low"),
+            "stress": emotional_state.get("stress_level", "low"),
+            "tone": emotional_state.get("tone", "neutral"),
+            "db_energy_score": emotional_state.get("energy_score", 70),
+            "from_db": emotional_state.get("has_data", False),
+        },
         "recommendation": rec,
     }
 
@@ -397,11 +473,29 @@ def _event_color(category: str) -> str:
 
 
 # ─────────────────────────────────────────────
-# AI HELPERS (Gemini)
+# AI HELPERS (Gemini) — now receives emotional state from DB
 # ─────────────────────────────────────────────
-def _ai_time_preferences(task_data: Dict) -> Dict:
-    prompt = f"""
-You are a cognitive scheduling expert. Given task details, return optimal time preferences.
+def _ai_time_preferences(task_data: Dict, emotional_state: Optional[Dict] = None) -> Dict:
+    emo_ctx = ""
+    if emotional_state and emotional_state.get("has_data"):
+        emo_ctx = f"""
+
+USER'S CURRENT EMOTIONAL STATE (from latest analysis in database):
+- Depression Level: {emotional_state.get('depression_level', 'low')} (score: {emotional_state.get('depression_score', 0):.2f})
+- Anxiety Level: {emotional_state.get('anxiety_level', 'low')} (score: {emotional_state.get('anxiety_score', 0):.2f})
+- Stress Level: {emotional_state.get('stress_level', 'low')} (score: {emotional_state.get('stress_score', 0):.2f})
+- Overall Tone: {emotional_state.get('tone', 'neutral')}
+- Current Energy Score: {emotional_state.get('energy_score', 70)}/100
+
+IMPORTANT EMOTIONAL RULES:
+- If depression is HIGH: avoid early morning scheduling, prefer gentle afternoon slots, reduce task intensity
+- If anxiety is HIGH: avoid back-to-back scheduling, add buffer time, prefer familiar/comfortable time slots
+- If stress is HIGH: space out tasks more, prefer low-pressure time windows, suggest breaks before/after
+- If energy is LOW (<40): only schedule light tasks, prefer peak circadian hours
+- If tone is NEGATIVE: prioritize self-care tasks, avoid overloading
+"""
+
+    prompt = f"""You are a cognitive scheduling expert. Given task details AND the user's emotional state, return optimal time preferences.
 
 Task: {task_data['task_name']}
 Difficulty: {task_data['difficulty']}/10
@@ -409,15 +503,16 @@ Duration: {task_data['duration_minutes']} min
 Cognitive Type: {task_data.get('cognitive_type')}
 Is Physical: {task_data.get('is_physical_activity', False)}
 Preferred Time: {task_data.get('preferred_time_of_day', 'Flexible')}
-
+{emo_ctx}
 RULES:
 - Physical activities → ONLY 6 AM – 10 PM
 - Deep analytical → Morning 8-12 or afternoon 3-5 PM
 - Creative → moderate-high energy periods
 - Memorization → flexible
+- ADAPT scheduling based on the user's emotional state above
 
 Respond ONLY in JSON (no markdown):
-{{"min_energy": <1-10>, "preferred_hours": [<hours>], "avoid_hours": [<hours>], "reasoning": "<brief>"}}
+{{"min_energy": <1-10>, "preferred_hours": [<hours>], "avoid_hours": [<hours>], "reasoning": "<brief, mention emotional adaptation>"}}
 """
     try:
         resp = _gemini_client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
@@ -493,7 +588,7 @@ def _analyze_workload(events, local_tz) -> Dict:
     return wmap
 
 
-def _find_optimal_slot(service, task_data: Dict, energy_state: Dict) -> datetime.datetime:
+def _find_optimal_slot(service, task_data: Dict, energy_state: Dict, emotional_state: Optional[Dict] = None) -> datetime.datetime:
     import pytz
     local_tz = pytz.timezone("Asia/Kolkata")
     now = datetime.datetime.now(local_tz)
@@ -517,7 +612,7 @@ def _find_optimal_slot(service, task_data: Dict, energy_state: Dict) -> datetime
     ).execute()
     events = events_result.get("items", [])
     wmap = _analyze_workload(events, local_tz)
-    prefs = _ai_time_preferences(task_data)
+    prefs = _ai_time_preferences(task_data, emotional_state)  # Pass emotional state to Gemini
     current_energy = energy_state["energy_level"]
     duration_needed = task_data["duration_minutes"]
 
@@ -610,19 +705,34 @@ def _create_calendar_event(service, task_data: Dict, work_structure: Dict, start
 
 def schedule_task(user_input: str) -> Dict:
     """
-    End-to-end: parse → energy check → recovery check → find slot → create event → update state.
+    End-to-end: fetch emotional state from DB → parse → energy check → recovery →
+    find slot (with emotional context for Gemini) → create event → update state.
     Returns a JSON-friendly dict with all details.
     """
+    # Step 0: Fetch emotional state from DB (Pipeline 1 → Pipeline 2 bridge)
+    emotional_state = fetch_emotional_state_from_db()
+    print(f"[scheduler] Emotional state from DB: dep={emotional_state.get('depression_level')}, "
+          f"anx={emotional_state.get('anxiety_level')}, stress={emotional_state.get('stress_level')}, "
+          f"energy={emotional_state.get('energy_score')}, from_db={emotional_state.get('has_data')}")
+
+    # Step 1: Parse task
     task_data = parse_natural_language_task(user_input)
-    energy_state = get_mental_energy()
+
+    # Step 2: Get mental energy (now includes emotional state from DB)
+    energy_state = get_mental_energy(emotional_state)
+
+    # Step 3: Recovery check (now includes emotional state)
     recovery = calculate_recovery_need(task_data, energy_state)
 
+    # Step 4: Find optimal slot (Gemini receives emotional context)
     service = _get_calendar_service()
-    start_time = _find_optimal_slot(service, task_data, energy_state)
+    start_time = _find_optimal_slot(service, task_data, energy_state, emotional_state)
+
+    # Step 5: Create work blocks and calendar event
     work_structure = create_deep_work_block(task_data, start_time)
     event_id, event_link = _create_calendar_event(service, task_data, work_structure, start_time)
 
-    # update cognitive state
+    # Step 6: Update cognitive state
     cognitive_state.add_task(task_data)
     cognitive_state.update_fatigue(task_data["difficulty"])
     cognitive_state.increment_streak()
@@ -633,6 +743,14 @@ def schedule_task(user_input: str) -> Dict:
         "task": task_data,
         "energy": energy_state,
         "recovery": recovery,
+        "emotional_context": {
+            "from_db": emotional_state.get("has_data", False),
+            "depression": emotional_state.get("depression_level"),
+            "anxiety": emotional_state.get("anxiety_level"),
+            "stress": emotional_state.get("stress_level"),
+            "tone": emotional_state.get("tone"),
+            "db_energy_score": emotional_state.get("energy_score"),
+        },
         "scheduled_at": start_time.isoformat(),
         "work_structure": work_structure,
         "calendar_event": {"id": event_id, "link": event_link},

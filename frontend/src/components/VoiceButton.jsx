@@ -24,11 +24,18 @@ const VoiceButton = ({ onVoiceResult }) => {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+        if (audioBlob.size < 1000) {
+          console.warn('Audio recording too short:', audioBlob.size);
+          alert('Recording too short. Please speak for at least 3 seconds.');
+          return;
+        }
+
         await sendAudioToBackend(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(200); // Collect data every 200ms
       setIsListening(true);
     } catch (error) {
       console.error('Error accessing microphone:', error);
@@ -47,15 +54,29 @@ const VoiceButton = ({ onVoiceResult }) => {
   const sendAudioToBackend = async (audioBlob) => {
     try {
       const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-      const result = await analyzeVoice(audioFile);
+      const response = await fetch('http://127.0.0.1:8000/api/analyze/voice', {
+        method: 'POST',
+        headers: {
+          // Content-Type is set automatically by browser with boundary
+        },
+        body: (() => {
+          const formData = new FormData();
+          formData.append('audio', audioFile);
+          return formData;
+        })()
+      });
+
+      const result = await response.json();
       console.log('Voice analysis result:', result);
-      
-      if (onVoiceResult) {
+
+      if (result.status === 'error') {
+        alert(`Analysis Failed: ${result.error}\n${result.details || ''}`);
+      } else if (onVoiceResult) {
         onVoiceResult(result);
       }
     } catch (error) {
       console.error('Error analyzing voice:', error);
-      alert('Failed to analyze voice. Please try again.');
+      alert('Failed to analyze voice. Server error.');
     } finally {
       setIsProcessing(false);
     }
@@ -104,26 +125,26 @@ const VoiceButton = ({ onVoiceResult }) => {
           isListening ? <MicOff size={16} /> : <Mic size={16} />
         )}
       </motion.button>
-      
+
       {/* Waveform Visualization (when listening) */}
       <AnimatePresence>
         {isListening && (
-          <motion.div 
-             initial={{ opacity: 0, scaleY: 0 }}
-             animate={{ opacity: 1, scaleY: 1 }}
-             exit={{ opacity: 0, scaleY: 0 }}
-             className="absolute -right-16 top-1/2 -translate-y-1/2 flex items-center gap-1 h-6 pointer-events-none"
+          <motion.div
+            initial={{ opacity: 0, scaleY: 0 }}
+            animate={{ opacity: 1, scaleY: 1 }}
+            exit={{ opacity: 0, scaleY: 0 }}
+            className="absolute -right-16 top-1/2 -translate-y-1/2 flex items-center gap-1 h-6 pointer-events-none"
           >
             {[...Array(5)].map((_, i) => (
               <motion.div
                 key={i}
                 className="w-1 bg-emerald-400 rounded-full"
                 animate={{ height: [8, 20, 8] }}
-                transition={{ 
-                  duration: 0.5, 
-                  repeat: Infinity, 
+                transition={{
+                  duration: 0.5,
+                  repeat: Infinity,
                   delay: i * 0.1,
-                  repeatType: "mirror" 
+                  repeatType: "mirror"
                 }}
               />
             ))}

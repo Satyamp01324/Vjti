@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import EnergyGauge from './components/EnergyGauge';
 import ChatInput from './components/ChatInput';
@@ -16,6 +16,8 @@ import DeepWorkMode from './pages/DeepWorkMode';
 import CognitiveInsights from './pages/CognitiveInsights';
 import RecoveryCycles from './pages/RecoveryCycles';
 import Settings from './pages/Settings';
+import LandingPage from './pages/LandingPage';
+import { supabase } from './supabaseClient';
 import { Zap, Menu, Bell, LogOut, Settings as SettingsIcon, User, Search } from 'lucide-react';
 
 const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, userEmail }) => {
@@ -55,7 +57,7 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
 
   const updateDashboardFromAPI = (apiResponse) => {
     console.log("Updating dashboard from API response:", apiResponse);
-    
+
     if (!apiResponse || apiResponse.status !== 'success') return;
 
     // This will be handled by the parent App component
@@ -88,8 +90,13 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
     ? userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'NP';
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     setShowProfileMenu(false);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
     navigate('/login');
   };
 
@@ -319,261 +326,142 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
   );
 };
 
-import LandingPage from './pages/LandingPage';
-import { supabase } from './supabaseClient';
-
-function App() {
-  const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState('dark');
-  const [userRole, setUserRole] = useState('user');
-  const [userName, setUserName] = useState('');
+const App = () => {
+  const [session, setSession] = useState(null);
+  const [userRole, setUserRole] = useState('student');
+  const [userName, setUserName] = useState('User');
   const [userEmail, setUserEmail] = useState('');
-
-  // Real-time Data States
-  const [energyLevel, setEnergyLevel] = useState(null);
+  const [energyLevel, setEnergyLevel] = useState(72);
   const [metrics, setMetrics] = useState({
-    stress: { value: 'Low', unit: '0% Score', type: 'success' },
-    anxiety: { value: 'Stable', unit: '0% Score', type: 'success' },
-    depression: { value: 'None', unit: '0% Risk', type: 'success' },
-    tone: { value: 'Neutral', unit: 'System Standby', type: 'success' },
-    taskType: 'Medium'
+    stress: { value: 'Low', unit: 'Score', type: 'success' },
+    anxiety: { value: 'Stable', unit: 'Score', type: 'success' },
+    depression: { value: 'None', unit: 'Risk', type: 'success' },
+    tone: { value: 'Calm', unit: 'Analysis', type: 'success' },
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check API health
-    const checkApiHealth = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/health`);
-        const data = await response.json();
-        console.log('Backend health:', data);
-      } catch (error) {
-        console.error('Error connecting to backend:', error);
-      }
-    };
-    checkApiHealth();
-
-    // Listen for dashboard updates from ChatInput
-    const handleDashboardUpdate = (event) => {
-      console.log('Dashboard update event received:', event.detail);
-      updateDashboard(event.detail);
-    };
-    window.addEventListener('dashboardUpdate', handleDashboardUpdate);
-
-    // Fetch user profile from Supabase Auth
-    const fetchUserProfile = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (user) {
-          // Try to get name from user_metadata first, then raw_user_meta_data
-          const fullName = user.user_metadata?.full_name
-            || user.user_metadata?.name
-            || user.user_metadata?.display_name
-            || user.email?.split('@')[0] // Fallback to email prefix
-            || 'User';
-          setUserName(fullName);
-          setUserEmail(user.email || '');
-          console.log('User profile loaded:', fullName);
-        }
-      } catch (err) {
-        console.error('Error fetching user profile:', err);
-      }
-    };
-    fetchUserProfile();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Auth Listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       if (session?.user) {
-        const fullName = session.user.user_metadata?.full_name
-          || session.user.user_metadata?.name
-          || session.user.user_metadata?.display_name
-          || session.user.email?.split('@')[0]
-          || 'User';
-        setUserName(fullName);
-        setUserEmail(session.user.email || '');
+        fetchUserProfile(session.user.id);
+        setUserEmail(session.user.email);
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+        setUserEmail(session.user.email);
       }
     });
 
-    document.documentElement.setAttribute('data-theme', theme);
+    return () => subscription.unsubscribe();
+  }, []);
 
-    // Initial Data Fetch
-    const fetchLatestSession = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('analysis_sessions')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+  const fetchUserProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('users_profile')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-        if (error) {
-          console.error('Error fetching initial session:', error);
-        } else if (data) {
-          updateDashboard(data);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching session:', err);
-      } finally {
-        setLoading(false);
+      if (data) {
+        setUserName(data.full_name || 'User');
+        setUserRole(data.role || 'student');
+        // Fetch latest metrics if available
+        // For now, use defaults or mock
       }
-    };
+    } catch (e) {
+      console.error("Profile fetch error:", e);
+    }
+  };
 
-    fetchLatestSession();
+  // Dashboard Data Listener (from ChatInput/Backend)
+  useEffect(() => {
+    const handleDashboardUpdate = (event) => {
+      const data = event.detail;
+      console.log('Dashboard update received:', data);
 
-    // Real-time Subscription
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'analysis_sessions',
-        },
-        (payload) => {
-          console.log('New analysis session received:', payload.new);
-          updateDashboard(payload.new);
-        }
-      )
-      .subscribe();
+      // Update energy level
+      if (data.energy_flow) {
+        const newEnergy = data.energy_flow.energy_score || data.energy_flow.final_energy_score;
+        if (newEnergy) setEnergyLevel(newEnergy);
+      }
 
-    return () => {
-      window.removeEventListener('dashboardUpdate', handleDashboardUpdate);
-      supabase.removeChannel(channel);
-      subscription?.unsubscribe();
-    };
-  }, [theme]);
-
-  const updateDashboard = (data) => {
-    if (!data) return;
-
-    console.log('Updating dashboard with data:', data);
-
-    // Handle API response format (from ChatInput)
-    if (data.energy_flow) {
+      // Extract classification levels from the correct location
+      // Backend returns levels under energy_flow.classified_levels
+      const levels = data.energy_flow?.classified_levels || {};
+      // Also check direct analysis keys as fallback
       const analysis = data.analysis || {};
-      const energyFlow = data.energy_flow || {};
-      const levels = energyFlow.classified_levels || {};
 
-      if (energyFlow.energy_score !== undefined) {
-        setEnergyLevel(energyFlow.energy_score);
-      }
+      const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 
-      const formatScore = (score) => score ? `${(score * 100).toFixed(0)}%` : '0%';
+      const getStatusType = (level) => {
+        switch (level?.toLowerCase()) {
+          case 'low': case 'none': return 'success';
+          case 'medium': case 'moderate': return 'warning';
+          case 'high': return 'error';
+          default: return 'success';
+        }
+      };
+      const getToneType = (tone) => {
+        switch (tone?.toLowerCase()) {
+          case 'positive': return 'success';
+          case 'neutral': return 'warning';
+          case 'negative': return 'error';
+          default: return 'success';
+        }
+      };
 
-      setMetrics({
-        stress: {
-          value: levels.stress ? capitalize(levels.stress) : 'Low',
-          unit: `${formatScore(analysis.stress)} Score`,
-          type: getStatusType(levels.stress, 'negative_is_bad')
-        },
-        anxiety: {
-          value: levels.anxiety ? capitalize(levels.anxiety) : 'Stable',
-          unit: `${formatScore(analysis.anxiety)} Score`,
-          type: getStatusType(levels.anxiety, 'negative_is_bad')
-        },
-        depression: {
-          value: levels.depression ? capitalize(levels.depression) : 'None',
-          unit: `${formatScore(analysis.depression)} Risk`,
-          type: getStatusType(levels.depression, 'negative_is_bad')
-        },
-        tone: {
-          value: levels.tone ? capitalize(levels.tone) : 'Neutral',
-          unit: data.input_text ? 'Text Analysis' : 'Voice Analysis',
-          type: getToneType(levels.tone)
-        },
-        taskType: energyFlow.recommended_task_type || 'Medium'
-      });
-    } 
-    // Handle Supabase database format (from real-time subscription)
-    else {
-      if (data.energy_score !== undefined) {
-        setEnergyLevel(data.energy_score);
-      }
-
-      const formatScore = (score) => score ? `${(score * 100).toFixed(0)}%` : '0%';
-      const getInputTypeLabel = (type) => type === 'voice' ? 'Voice Analysis' : 'Text Analysis';
+      const stressVal = capitalize(levels.stress || analysis.stress_level || 'Low');
+      const anxietyVal = capitalize(levels.anxiety || analysis.anxiety_level || 'Stable');
+      const depressionVal = capitalize(levels.depression || analysis.depression_level || 'None');
+      const toneVal = capitalize(levels.tone || analysis.tone || 'Calm');
 
       setMetrics({
-        stress: {
-          value: data.stress_level ? capitalize(data.stress_level) : 'Low',
-          unit: `${formatScore(data.stress_score)} Score`,
-          type: getStatusType(data.stress_level, 'negative_is_bad')
-        },
-        anxiety: {
-          value: data.anxiety_level ? capitalize(data.anxiety_level) : 'Stable',
-          unit: `${formatScore(data.anxiety_score)} Score`,
-          type: getStatusType(data.anxiety_level, 'negative_is_bad')
-        },
-        depression: {
-          value: data.depression_level ? capitalize(data.depression_level) : 'None',
-          unit: `${formatScore(data.depression_score)} Risk`,
-          type: getStatusType(data.depression_level, 'negative_is_bad')
-        },
-        tone: {
-          value: data.tone ? capitalize(data.tone) : 'Neutral',
-          unit: getInputTypeLabel(data.input_type),
-          type: getToneType(data.tone)
-        },
-        taskType: data.recommended_task_type || 'Medium'
+        stress: { value: stressVal, unit: `Score: ${(analysis.stress || 0).toFixed?.(2) || '0.00'}`, type: getStatusType(stressVal) },
+        anxiety: { value: anxietyVal, unit: `Score: ${(analysis.anxiety || 0).toFixed?.(2) || '0.00'}`, type: getStatusType(anxietyVal) },
+        depression: { value: depressionVal, unit: `Score: ${(analysis.depression || 0).toFixed?.(2) || '0.00'}`, type: getStatusType(depressionVal) },
+        tone: { value: toneVal, unit: 'Analysis', type: getToneType(toneVal) },
       });
-    }
-  };
+    };
 
-  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    window.addEventListener('dashboardUpdate', handleDashboardUpdate);
+    return () => window.removeEventListener('dashboardUpdate', handleDashboardUpdate);
+  }, [energyLevel]);
 
-  const getStatusType = (level, mode = 'negative_is_bad') => {
-    const isBad = mode === 'negative_is_bad';
-    switch (level?.toLowerCase()) {
-      case 'low': return isBad ? 'success' : 'error';
-      case 'medium': return 'warning';
-      case 'high': return isBad ? 'error' : 'success';
-      case 'stable': return 'success';
-      case 'none': return 'success';
-      default: return 'success';
-    }
-  };
-
-  const getToneType = (tone) => {
-    switch (tone?.toLowerCase()) {
-      case 'positive': return 'success';
-      case 'neutral': return 'warning';
-      case 'negative': return 'error';
-      default: return 'success';
-    }
-  }
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 bg-[#0a0e1a] flex items-center justify-center z-50">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative z-10 flex flex-col items-center gap-4"
-        >
-          <div className="w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
-          <span className="text-sm font-medium text-slate-400">Loading NeuroPilot...</span>
-        </motion.div>
-      </div>
-    );
+    return <div className="h-screen w-screen bg-[#0a0e1a] flex items-center justify-center text-emerald-400">Loading NeuroPilot...</div>;
   }
 
+  const layoutProps = { theme: 'dark', userRole, energyLevel, metrics, userName, userEmail };
+
   return (
-    <>
-      <PWAInstallPrompt />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login setUserRole={setUserRole} />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/deep-work" element={<DeepWorkMode />} />
-        <Route path="/dashboard" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} userName={userName} userEmail={userEmail} />} />
-        <Route path="/recovery" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} userName={userName} userEmail={userEmail} />} />
-        <Route path="/insights" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} userName={userName} userEmail={userEmail} />} />
-        <Route path="/settings" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} userName={userName} userEmail={userEmail} />} />
-        <Route path="/tasks" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} userName={userName} userEmail={userEmail} />} />
-        <Route path="/*" element={<DashboardLayout theme={theme} userRole={userRole} energyLevel={energyLevel || 85} metrics={metrics} userName={userName} userEmail={userEmail} />} />
-      </Routes>
-    </>
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+
+      {/* Deep Work Mode - Standalone Page (accessible without auth, handles anonymous internally) */}
+      <Route path="/deep-work" element={<DeepWorkMode />} />
+
+      {/* Dashboard Routes with Layout */}
+      <Route path="/dashboard" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+      <Route path="/tasks" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+      <Route path="/insights" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+      <Route path="/recovery" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+      <Route path="/settings" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
-}
+};
 
 export default App;

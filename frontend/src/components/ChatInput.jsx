@@ -30,22 +30,22 @@ const ChatInput = ({ onSendMessage, onAnalysisComplete }) => {
     if (!input.trim()) return;
 
     setIsAnalyzing(true);
-    
+
     try {
       // Call the backend API to analyze the text
       const result = await analyzeText(input);
       console.log('Analysis result:', result);
-      
+
       // Pass the result to parent component
       if (onSendMessage) {
         onSendMessage(input, result);
       }
-      
+
       // Update dashboard immediately with the result
       if (onAnalysisComplete) {
         onAnalysisComplete(result);
       }
-      
+
       // Clear input
       setInput('');
       setIsTyping(false);
@@ -55,6 +55,25 @@ const ChatInput = ({ onSendMessage, onAnalysisComplete }) => {
       alert('Failed to analyze text. Please try again.');
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleVoiceResult = (result) => {
+    console.log("Voice Result in ChatInput:", result);
+    if (!result) return;
+
+    // Set text in input for visibility
+    const text = result.transcription?.text || result.input_text || "";
+    setInput(text);
+
+    // Pass full analysis up to dashboard
+    if (result.status === 'success') {
+      if (onSendMessage) {
+        onSendMessage(text, result);
+      }
+      if (onAnalysisComplete) {
+        onAnalysisComplete(result);
+      }
     }
   };
 
@@ -101,7 +120,7 @@ const ChatInput = ({ onSendMessage, onAnalysisComplete }) => {
               <button type="button" className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-md hover:bg-white/5">
                 <Sparkles size={16} />
               </button>
-              <VoiceButton />
+              <VoiceButton onVoiceResult={handleVoiceResult} />
             </div>
 
             <button

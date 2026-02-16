@@ -122,14 +122,21 @@ def transcribe_audio(audio_file_path: str, language: Optional[str] = None, use_g
         
         print(f"Transcribing: {audio_file_path} ({file_size} bytes)")
         
-        # Try Groq first if available and enabled (faster + better for multilingual)
+        # 1. Validation: Check file size (ignore very small files < 1KB)
+        if file_size < 1024:
+            print(f"⚠ Audio file too small ({file_size} bytes), skipping transcription.")
+            return {"text": "", "language": "unknown", "method": "skipped_too_small", "error": "Audio too short"}
+
+        # 2. Try Groq (Cloud)
         if use_groq and groq_client:
-            groq_result = transcribe_with_groq(audio_file_path, language)
-            if groq_result:
-                return groq_result
-            print("⚠ Groq failed, falling back to local Whisper...")
+            try:
+                groq_result = transcribe_with_groq(audio_file_path, language)
+                if groq_result:
+                    return groq_result
+            except Exception as e:
+                 print(f"⚠ Groq failed: {e}, falling back to local Whisper...")
         
-        # Fallback to local Whisper model
+        # 3. Fallback: Local Whisper (CPU/GPU)
         print(f"🔄 Using local Whisper model...")
         
         # For better multilingual support, let Whisper auto-detect then transcribe
@@ -168,10 +175,21 @@ def transcribe_audio(audio_file_path: str, language: Optional[str] = None, use_g
             "method": "local_whisper",
             "status": "success"
         }
+    except FileNotFoundError as e:
+        # Check if it's FFmpeg missing
+        error_msg = str(e)
+        if "No such file or directory" in error_msg or "[WinError 2]" in error_msg:
+             print("❌ CRITICAL: FFmpeg not found. Please install FFmpeg and add it to PATH.")
+             return {"text": "", "error": "ffmpeg_missing", "details": "Please install FFmpeg to enable voice features.", "status": "error"}
+        raise e
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
         print(f"❌ Transcription error: {e}")
+        # Detect if it's an ffmpeg issue masked as general exception
+        if "ffmpeg" in str(e).lower() or "winerror 2" in str(e).lower():
+            return {"text": "", "error": "ffmpeg_missing", "details": "Please install FFmpeg to enable voice features.", "status": "error"}
+        
         print(error_trace)
         return {
             "error": str(e),

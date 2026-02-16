@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Points, PointMaterial } from "@react-three/drei";
-import * as random from "maath/random/dist/maath-random.esm";
+import * as random from "maath/random";
 
 function Stars(props) {
   const ref = useRef();
@@ -30,13 +30,13 @@ function Stars(props) {
 }
 
 const NeuralBackground = () => {
-    return (
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
-            <Canvas camera={{ position: [0, 0, 1] }}>
-                <Stars />
-            </Canvas>
-        </div>
-    )
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
+      <Canvas camera={{ position: [0, 0, 1] }}>
+        <Stars />
+      </Canvas>
+    </div>
+  )
 }
 
 export default NeuralBackground;

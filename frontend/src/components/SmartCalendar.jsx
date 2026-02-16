@@ -4,6 +4,8 @@ import { Clock, GripVertical, Plus, X, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 const SmartCalendar = () => {
   const [tasks, setTasks] = useState([
     { id: '1', title: 'Deep Work: Graph Theory', time: '09:00', duration: 90, type: 'high', cognitiveLoad: 85 },
@@ -31,7 +33,7 @@ const SmartCalendar = () => {
 
     try {
       // Call the backend scheduler API
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/scheduler/schedule`, {
+      const response = await fetch(`${API_BASE}/api/scheduler/schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task: newTaskInput }),
@@ -48,11 +50,11 @@ const SmartCalendar = () => {
         // Extract task details from response
         const taskData = result.task || result.scheduled_task || {};
         const calendarEvent = result.calendar_event || {};
-        
+
         // Parse start time
         let taskTime = '10:00';
         let taskDuration = 60;
-        
+
         if (calendarEvent.start) {
           const startDate = new Date(calendarEvent.start.dateTime || calendarEvent.start);
           taskTime = format(startDate, 'HH:mm');
@@ -60,7 +62,7 @@ const SmartCalendar = () => {
           const startDate = new Date(result.optimal_slot.start_time);
           taskTime = format(startDate, 'HH:mm');
         }
-        
+
         // Get duration
         if (taskData.duration) {
           taskDuration = taskData.duration;
@@ -69,11 +71,11 @@ const SmartCalendar = () => {
           const end = new Date(calendarEvent.end.dateTime || calendarEvent.end);
           taskDuration = Math.round((end - start) / (1000 * 60));
         }
-        
+
         // Determine difficulty and type
         const difficulty = taskData.difficulty || taskData.estimated_difficulty || 5;
         const taskType = difficulty >= 7 ? 'high' : difficulty >= 4 ? 'medium' : 'low';
-        
+
         // Add the new task to the list
         const newTask = {
           id: Date.now().toString(),
@@ -88,7 +90,7 @@ const SmartCalendar = () => {
         setTasks([...tasks, newTask]);
         setNewTaskInput('');
         setShowAddTask(false);
-        
+
         // Show success message
         console.log('✅ Task added successfully:', newTask);
       } else {
@@ -96,7 +98,7 @@ const SmartCalendar = () => {
       }
     } catch (error) {
       console.error('Error scheduling task:', error);
-      
+
       // Fallback: add task manually with smart defaults
       const newTask = {
         id: Date.now().toString(),
@@ -106,11 +108,11 @@ const SmartCalendar = () => {
         type: 'medium',
         cognitiveLoad: 50,
       };
-      
+
       setTasks([...tasks, newTask]);
       setNewTaskInput('');
       setShowAddTask(false);
-      
+
       console.log('⚠️ Task added with fallback (backend unavailable)');
     } finally {
       setIsScheduling(false);

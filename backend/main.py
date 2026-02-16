@@ -40,6 +40,7 @@ from core.cognitive_scheduler import (
     parse_natural_language_task,
     get_mental_energy,
     calculate_recovery_need,
+    fetch_emotional_state_from_db,
 )
 
 # ============================================
@@ -107,6 +108,20 @@ class ScheduleMultipleRequest(BaseModel):
 class CompleteTaskRequest(BaseModel):
     task_name: str
     actual_difficulty: int
+
+# --- Study Session models (Pipeline 3) ---
+class StartSessionRequest(BaseModel):
+    user_id: str
+    task_name: str = "Focus Session"
+    duration_minutes: int = 90
+
+class SessionActionRequest(BaseModel):
+    session_id: str
+
+class BreakRequest(BaseModel):
+    session_id: str
+    break_type: str = "short"  # short, long, micro, custom
+    custom_duration_seconds: Optional[int] = 0
 
 
 # ============================================
@@ -416,5 +431,79 @@ async def api_cognitive_stats():
 
 @app.get("/api/scheduler/energy")
 async def api_scheduler_energy():
-    """Get current mental energy level with circadian-rhythm context."""
+    """Get current mental energy level with circadian-rhythm + emotional state context."""
     return get_scheduler_energy()
+
+
+@app.get("/api/scheduler/emotional-state")
+async def api_emotional_state():
+    """Get user's latest emotional state from DB (Pipeline 1 → Pipeline 2 bridge)."""
+    state = fetch_emotional_state_from_db()
+    return {"status": "success", "emotional_state": state}
+
+
+# ============================================
+# PIPELINE 3: STUDY SESSION ENDPOINTS
+# ============================================
+from core.study_session import (
+    start_session, pause_session, resume_session,
+    start_break, end_break, end_session,
+    get_session_status, get_today_stats, get_weekly_stats,
+    get_recovery_plan,
+    get_current_session,
+)
+
+@app.post("/api/study/start")
+async def api_start_session(request: StartSessionRequest):
+    """Start a new study/focus session."""
+    return start_session(request.user_id, request.task_name, request.duration_minutes)
+
+@app.get("/api/study/current/{user_id}")
+async def api_current_session(user_id: str):
+    """Get the current active/paused/break session for the user."""
+    return get_current_session(user_id)
+
+@app.post("/api/study/pause")
+async def api_pause_session(request: SessionActionRequest):
+    """Pause the current study session."""
+    return pause_session(request.session_id)
+
+@app.post("/api/study/resume")
+async def api_resume_session(request: SessionActionRequest):
+    """Resume a paused study session."""
+    return resume_session(request.session_id)
+
+@app.post("/api/study/break")
+async def api_start_break(request: BreakRequest):
+    """Start a break during a study session."""
+    return start_break(request.session_id, request.break_type, request.custom_duration_seconds)
+
+@app.post("/api/study/end-break")
+async def api_end_break(request: SessionActionRequest):
+    """End a break and resume focus."""
+    return end_break(request.session_id)
+
+@app.post("/api/study/end")
+async def api_end_session(request: SessionActionRequest):
+    """End a study session. Returns stats + AI recovery plan."""
+    return end_session(request.session_id)
+
+@app.get("/api/study/session/{session_id}")
+async def api_session_status(session_id: str):
+    """Get current session status and live stats."""
+    return get_session_status(session_id)
+
+@app.get("/api/study/stats/today/{user_id}")
+async def api_today_stats(user_id: str):
+    """Get today's study stats for a user."""
+    return get_today_stats(user_id)
+
+@app.get("/api/study/stats/weekly/{user_id}")
+async def api_weekly_stats(user_id: str):
+    """Get weekly study analysis with daily breakdown."""
+    return get_weekly_stats(user_id)
+
+@app.get("/api/study/recovery-plan/{user_id}")
+async def api_recovery_plan(user_id: str):
+    """Get AI recovery plan based on emotional state + recent sessions."""
+    return get_recovery_plan(user_id)
