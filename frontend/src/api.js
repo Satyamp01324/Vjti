@@ -5,7 +5,11 @@
  * All data-mutating calls accept an optional `userId` to enable per-user isolation.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const VITE_API_URL = import.meta.env.VITE_API_URL;
+const isDev = import.meta.env.DEV;
+const API_BASE = (VITE_API_URL && VITE_API_URL !== "undefined")
+  ? VITE_API_URL
+  : (isDev ? "http://127.0.0.1:8000" : "");
 
 // ─── helpers ─────────────────────────────────────────────────
 

@@ -34,37 +34,66 @@ const checkSupabaseConnectivity = async () => {
     }
 };
 
-let supabase;
+const isConfigured = supabaseUrl &&
+    supabaseUrl !== 'undefined' &&
+    supabaseAnonKey &&
+    supabaseAnonKey !== 'undefined';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('⚠️ Supabase environment variables not found! Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env');
-    // Minimal fallback to prevent crashes
-    supabase = {
-        auth: {
-            getUser: async () => ({ data: { user: null }, error: { message: 'Supabase not configured' } }),
-            getSession: async () => ({ data: { session: null }, error: null }),
-            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
-            signInWithPassword: async () => ({ data: null, error: { message: 'Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env' } }),
-            signUp: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
-            signOut: async () => ({ error: null })
-        },
-        from: () => ({
-            select: () => ({ order: () => ({ limit: () => ({ single: async () => ({ data: null, error: { message: 'Not configured' } }) }) }), eq: () => ({ single: async () => ({ data: null, error: { message: 'Not configured' } }) }) }),
-            insert: async () => ({ data: null, error: { message: 'Not configured' } }),
-            update: async () => ({ data: null, error: { message: 'Not configured' } })
+// Minimal fallback to prevent crashes by default
+const fallbackSupabase = {
+    auth: {
+        getUser: async () => ({ data: { user: null }, error: { message: 'Supabase not configured' } }),
+        getSession: async () => ({ data: { session: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+        signInWithPassword: async () => ({ data: null, error: { message: 'Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env' } }),
+        signUp: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
+        signOut: async () => ({ error: null })
+    },
+    from: () => ({
+        select: () => ({
+            order: () => ({
+                limit: () => ({
+                    single: async () => ({ data: null, error: { message: 'Not configured' } })
+                }),
+                eq: () => ({
+                    single: async () => ({ data: null, error: { message: 'Not configured' } })
+                }),
+                single: async () => ({ data: null, error: { message: 'Not configured' } })
+            }),
+            eq: () => ({
+                single: async () => ({ data: null, error: { message: 'Not configured' } }),
+                order: () => ({ single: async () => ({ data: null, error: { message: 'Not configured' } }) })
+            }),
+            single: async () => ({ data: null, error: { message: 'Not configured' } })
         }),
-        channel: () => ({ on: () => ({ subscribe: () => { } }) }),
-        removeChannel: () => { }
-    };
+        insert: async () => ({ data: null, error: { message: 'Not configured' } }),
+        update: async () => ({ data: null, error: { message: 'Not configured' } })
+    }),
+    channel: () => ({ on: () => ({ subscribe: () => { } }), subscribe: () => ({ unsubscribe: () => { } }) }),
+    removeChannel: () => { }
+};
+
+let supabase = fallbackSupabase;
+
+if (!isConfigured) {
+    if (typeof window !== 'undefined') {
+        console.warn('⚠️ Supabase environment variables not found or invalid! Using mock client.');
+    }
 } else {
     clearStaleSupabaseData();
-    supabase = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: true,
-        }
-    });
+    try {
+        const client = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: true,
+                detectSessionInUrl: true,
+            }
+        });
+        if (client) supabase = client;
+    } catch (err) {
+        console.error('Failed to create Supabase client:', err);
+        // supabase remains fallbackSupabase
+    }
 }
 
 // Check connectivity — informational only, does NOT swap client
