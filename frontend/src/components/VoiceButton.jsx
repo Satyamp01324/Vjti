@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff } from 'lucide-react';
 import { analyzeVoice } from '../api';
 
-const VoiceButton = ({ onVoiceResult }) => {
+const VoiceButton = ({ onVoiceResult, userId }) => {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef(null);
@@ -54,21 +54,7 @@ const VoiceButton = ({ onVoiceResult }) => {
   const sendAudioToBackend = async (audioBlob) => {
     try {
       const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-      const response = await fetch('http://127.0.0.1:8000/api/analyze/voice', {
-        method: 'POST',
-        headers: {
-          // Content-Type is set automatically by browser with boundary
-        },
-        body: (() => {
-          const formData = new FormData();
-          formData.append('audio', audioFile);
-          return formData;
-        })()
-      });
-
-      const result = await response.json();
-      console.log('Voice analysis result:', result);
-
+      const result = await analyzeVoice(audioFile, userId);
       if (result.status === 'error') {
         alert(`Analysis Failed: ${result.error}\n${result.details || ''}`);
       } else if (onVoiceResult) {

@@ -2,33 +2,7 @@
  * API Service — connects the React frontend to the FastAPI backend pipeline.
  *
  * Every function returns a Promise that resolves with the JSON body.
- *
- * DATA SENT FROM BACKEND (per pipeline call):
- * ──────────────────────────────────────────────
- * {
- *   status:        "success" | "error",
- *   session_id:    string (UUID),
- *   input_text:    string,
- *   transcription: { text, language, language_name, method },   // voice only
- *   analysis: {
- *     depression:  number (0-1),
- *     anxiety:     number (0-1),
- *     stress:      number (0-1),
- *     source:      "local_model" | "groq_fallback_language"
- *   },
- *   energy_flow: {
- *     energy_score:            number (0-100),
- *     energy_category:         "high_energy" | "medium_energy" | "low_energy",
- *     recommended_task_type:   "heavy" | "medium" | "light",
- *     task_description:        string,
- *     task_suggestions:        string[],
- *     classified_levels:       { stress, anxiety, depression, tone },
- *     impact_breakdown:        { stress_impact, anxiety_impact, depression_impact, tone_impact, total_impact },
- *     base_energy:             number,
- *   },
- *   audio_info:    { filename, content_type, size_bytes, storage_url },  // voice only
- *   persisted:     boolean,
- * }
+ * All data-mutating calls accept an optional `userId` to enable per-user isolation.
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
@@ -46,27 +20,32 @@ async function request(path, options = {}) {
 
 // ─── PIPELINE endpoints (auto-persist to Supabase) ──────────
 
-/** Analyze text → returns analysis + energy + saves to Supabase */
-export async function analyzeText(text) {
+/** Analyze text → returns analysis + energy + saves to Supabase (per-user) */
+export async function analyzeText(text, userId = null) {
+  const body = { text };
+  if (userId) body.user_id = userId;
   return request("/api/analyze/text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(body),
   });
 }
 
-/** Analyze voice → transcribe + analysis + energy + saves to Supabase */
-export async function analyzeVoice(audioFile) {
+/** Analyze voice → transcribe + analysis + energy + saves to Supabase (per-user) */
+export async function analyzeVoice(audioFile, userId = null) {
   const form = new FormData();
   form.append("audio", audioFile);
+  if (userId) form.append("user_id", userId);
   return request("/api/analyze/voice", { method: "POST", body: form });
 }
 
-// ─── QUERY endpoints (read from Supabase) ───────────────────
+// ─── QUERY endpoints (read from Supabase, filtered by user) ─
 
-/** Recent analysis sessions (for history list) */
-export async function getSessions(limit = 20) {
-  return request(`/api/sessions?limit=${limit}`);
+/** Recent analysis sessions for the current user */
+export async function getSessions(limit = 20, userId = null) {
+  const params = new URLSearchParams({ limit });
+  if (userId) params.set("user_id", userId);
+  return request(`/api/sessions?${params}`);
 }
 
 /** Single session detail */
@@ -74,14 +53,19 @@ export async function getSession(sessionId) {
   return request(`/api/sessions/${sessionId}`);
 }
 
-/** Energy score history (for trend line chart) */
-export async function getEnergyHistory(limit = 50) {
-  return request(`/api/energy-history?limit=${limit}`);
+/** Energy score history for the current user */
+export async function getEnergyHistory(limit = 50, userId = null) {
+  const params = new URLSearchParams({ limit });
+  if (userId) params.set("user_id", userId);
+  return request(`/api/energy-history?${params}`);
 }
 
-/** Daily average energy (for bar/line chart) */
-export async function getEnergyDaily() {
-  return request("/api/energy-daily");
+/** Daily average energy for the current user */
+export async function getEnergyDaily(userId = null) {
+  const params = new URLSearchParams();
+  if (userId) params.set("user_id", userId);
+  const qs = params.toString();
+  return request(`/api/energy-daily${qs ? '?' + qs : ''}`);
 }
 
 // ─── STANDALONE endpoints (no persistence) ──────────────────
@@ -123,35 +107,32 @@ export async function testSupabase() {
 import { supabase } from "./supabaseClient";
 
 /**
- * Subscribe to new analysis sessions in realtime.
- * Usage:
- *   const unsub = subscribeToSessions((newRow) => console.log(newRow));
- *   // later: unsub();
+ * Subscribe to new analysis sessions in realtime (filtered by user_id).
  */
-export function subscribeToSessions(callback) {
+export function subscribeToSessions(callback, userId = null) {
+  const filter = userId
+    ? { event: "INSERT", schema: "public", table: "analysis_sessions", filter: `user_id=eq.${userId}` }
+    : { event: "INSERT", schema: "public", table: "analysis_sessions" };
+
   const channel = supabase
     .channel("analysis_sessions_changes")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "analysis_sessions" },
-      (payload) => callback(payload.new)
-    )
+    .on("postgres_changes", filter, (payload) => callback(payload.new))
     .subscribe();
 
   return () => supabase.removeChannel(channel);
 }
 
 /**
- * Subscribe to energy_history inserts for live chart updates.
+ * Subscribe to energy_history inserts for live chart updates (filtered by user_id).
  */
-export function subscribeToEnergyHistory(callback) {
+export function subscribeToEnergyHistory(callback, userId = null) {
+  const filter = userId
+    ? { event: "INSERT", schema: "public", table: "energy_history", filter: `user_id=eq.${userId}` }
+    : { event: "INSERT", schema: "public", table: "energy_history" };
+
   const channel = supabase
     .channel("energy_history_changes")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "energy_history" },
-      (payload) => callback(payload.new)
-    )
+    .on("postgres_changes", filter, (payload) => callback(payload.new))
     .subscribe();
 
   return () => supabase.removeChannel(channel);

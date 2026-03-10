@@ -48,16 +48,7 @@ from core.cognitive_scheduler import (
 # ============================================
 app = FastAPI(title="Let Go 3.0", version="2.0.0")
 
-origins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:3000",
-    "null",
-    "https://your-production-app.vercel.app",
-]
+origins = ["*"]  # Allow all origins for Vercel deployment flexibility
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +64,7 @@ app.add_middleware(
 # ============================================
 class TextRequest(BaseModel):
     text: str
+    user_id: Optional[str] = None
 
 class VoiceRequest(BaseModel):
     features: list | dict
@@ -177,7 +169,7 @@ async def pipeline_text(request: TextRequest):
     try:
         if not request.text or not request.text.strip():
             raise HTTPException(status_code=400, detail="Text cannot be empty")
-        result = run_text_pipeline(request.text)
+        result = run_text_pipeline(request.text, user_id=request.user_id)
         return result
     except HTTPException:
         raise
@@ -186,7 +178,7 @@ async def pipeline_text(request: TextRequest):
 
 
 @app.post("/api/analyze/voice")
-async def pipeline_voice(audio: UploadFile = File(...)):
+async def pipeline_voice(audio: UploadFile = File(...), user_id: Optional[str] = None):
     """
     **Primary voice endpoint.**
     Runs the full pipeline:
@@ -204,6 +196,7 @@ async def pipeline_voice(audio: UploadFile = File(...)):
             audio_bytes=audio_bytes,
             filename=audio.filename or "audio.webm",
             content_type=audio.content_type or "audio/webm",
+            user_id=user_id,
         )
 
         if result.get("status") == "error":
@@ -220,9 +213,9 @@ async def pipeline_voice(audio: UploadFile = File(...)):
 # ============================================
 
 @app.get("/api/sessions")
-async def list_sessions(limit: int = 20):
+async def list_sessions(limit: int = 20, user_id: Optional[str] = None):
     """Get recent analysis sessions (for dashboard/history)."""
-    sessions = get_recent_sessions(limit)
+    sessions = get_recent_sessions(limit, user_id=user_id)
     return {"status": "success", "data": sessions, "count": len(sessions)}
 
 
@@ -236,16 +229,16 @@ async def get_session_detail(session_id: str):
 
 
 @app.get("/api/energy-history")
-async def energy_history(limit: int = 50):
+async def energy_history(limit: int = 50, user_id: Optional[str] = None):
     """Get energy score history for trend charts."""
-    history = get_energy_history(limit)
+    history = get_energy_history(limit, user_id=user_id)
     return {"status": "success", "data": history, "count": len(history)}
 
 
 @app.get("/api/energy-daily")
-async def energy_daily():
+async def energy_daily(user_id: Optional[str] = None):
     """Get daily average energy scores (for line/bar charts)."""
-    averages = get_daily_energy_averages()
+    averages = get_daily_energy_averages(user_id=user_id)
     return {"status": "success", "data": averages}
 
 

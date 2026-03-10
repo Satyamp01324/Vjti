@@ -24,9 +24,9 @@ const PWAInstallPrompt = () => {
 
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    
+
     console.log(`User response to install prompt: ${outcome}`);
-    
+
     setDeferredPrompt(null);
     setShowPrompt(false);
   };
@@ -64,15 +64,15 @@ const PWAInstallPrompt = () => {
             <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               <Download className="text-white" size={20} />
             </div>
-            
+
             <div className="flex-1">
               <h3 className="text-white font-semibold text-sm mb-1">
-                Install NeuroPilot
+                Install NeuroMind
               </h3>
               <p className="text-white/80 text-xs mb-3">
                 Install our app for a better experience. Works offline and loads faster!
               </p>
-              
+
               <div className="flex gap-2">
                 <button
                   onClick={handleInstall}
@@ -88,7 +88,7 @@ const PWAInstallPrompt = () => {
                 </button>
               </div>
             </div>
-            
+
             <button
               onClick={handleDismiss}
               className="flex-shrink-0 text-white/60 hover:text-white transition-colors"

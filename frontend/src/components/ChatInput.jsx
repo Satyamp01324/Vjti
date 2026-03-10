@@ -10,7 +10,7 @@ const suggestions = [
   { id: 3, text: "Analyze my mood", icon: Sparkles },
 ];
 
-const ChatInput = ({ onSendMessage, onAnalysisComplete }) => {
+const ChatInput = ({ onSendMessage, onAnalysisComplete, userId }) => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -33,7 +33,7 @@ const ChatInput = ({ onSendMessage, onAnalysisComplete }) => {
 
     try {
       // Call the backend API to analyze the text
-      const result = await analyzeText(input);
+      const result = await analyzeText(input, userId);
       console.log('Analysis result:', result);
 
       // Pass the result to parent component
@@ -120,7 +120,7 @@ const ChatInput = ({ onSendMessage, onAnalysisComplete }) => {
               <button type="button" className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-md hover:bg-white/5">
                 <Sparkles size={16} />
               </button>
-              <VoiceButton onVoiceResult={handleVoiceResult} />
+              <VoiceButton onVoiceResult={handleVoiceResult} userId={userId} />
             </div>
 
             <button

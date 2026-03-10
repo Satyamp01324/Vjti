@@ -59,7 +59,7 @@ const Signup = () => {
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500 text-white mb-4">
                         <Zap className="w-5 h-5 fill-current" />
                     </div>
-                    <h2 className="text-xl font-semibold text-white mb-1">Join NeuroPilot</h2>
+                    <h2 className="text-xl font-semibold text-white mb-1">Join NeuroMind</h2>
                     <p className="text-sm text-slate-400">Unlock your cognitive potential.</p>
                 </div>
 

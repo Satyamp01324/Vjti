@@ -57,7 +57,7 @@ def _save_session(data: Dict[str, Any]) -> Optional[Dict]:
 
         # Also insert into energy_history for trend tracking
         if session and data.get("energy_score") is not None:
-            supabase.table("energy_history").insert({
+            energy_row = {
                 "session_id": session["id"],
                 "energy_score": data["energy_score"],
                 "energy_category": data.get("energy_category"),
@@ -65,10 +65,37 @@ def _save_session(data: Dict[str, Any]) -> Optional[Dict]:
                 "anxiety_level": data.get("anxiety_level"),
                 "depression_level": data.get("depression_level"),
                 "tone": data.get("tone"),
-            }).execute()
+            }
+            # Include user_id if present
+            if data.get("user_id"):
+                energy_row["user_id"] = data["user_id"]
+            supabase.table("energy_history").insert(energy_row).execute()
 
         return session
     except Exception as e:
+        error_str = str(e)
+        # If user_id column doesn't exist yet, retry without it
+        if "user_id" in error_str and ("column" in error_str or "schema" in error_str):
+            print("[pipeline] user_id column not found — saving without it. Run the migration SQL.")
+            data_no_uid = {k: v for k, v in data.items() if k != "user_id"}
+            try:
+                resp = supabase.table("analysis_sessions").insert(data_no_uid).execute()
+                session = resp.data[0] if resp.data else None
+                if session and data_no_uid.get("energy_score") is not None:
+                    supabase.table("energy_history").insert({
+                        "session_id": session["id"],
+                        "energy_score": data_no_uid["energy_score"],
+                        "energy_category": data_no_uid.get("energy_category"),
+                        "stress_level": data_no_uid.get("stress_level"),
+                        "anxiety_level": data_no_uid.get("anxiety_level"),
+                        "depression_level": data_no_uid.get("depression_level"),
+                        "tone": data_no_uid.get("tone"),
+                    }).execute()
+                return session
+            except Exception as e2:
+                print(f"[pipeline] Supabase save failed (retry): {e2}")
+                traceback.print_exc()
+                return None
         print(f"[pipeline] Supabase save failed: {e}")
         traceback.print_exc()
         return None
@@ -78,7 +105,7 @@ def _save_session(data: Dict[str, Any]) -> Optional[Dict]:
 # Public pipeline functions
 # ---------------------------------------------------------------
 
-def run_text_pipeline(text: str) -> Dict[str, Any]:
+def run_text_pipeline(text: str, user_id: str = None) -> Dict[str, Any]:
     """
     Full pipeline for text input.
 
@@ -135,6 +162,10 @@ def run_text_pipeline(text: str) -> Dict[str, Any]:
         "total_impact": impacts["total_impact"],
     }
 
+    # Add user_id for per-user isolation
+    if user_id:
+        db_row["user_id"] = user_id
+
     saved = _save_session(db_row)
 
     # 4 — Unified response
@@ -166,6 +197,7 @@ def run_voice_pipeline(
     audio_bytes: bytes,
     filename: str = "audio.webm",
     content_type: str = "audio/webm",
+    user_id: str = None,
 ) -> Dict[str, Any]:
     """
     Full pipeline for voice/audio input.
@@ -251,6 +283,10 @@ def run_voice_pipeline(
         "total_impact": impacts["total_impact"],
     }
 
+    # Add user_id for per-user isolation
+    if user_id:
+        db_row["user_id"] = user_id
+
     saved = _save_session(db_row)
 
     # 6 — Unified response
@@ -308,40 +344,37 @@ def get_session(session_id: str) -> Optional[Dict]:
         return None
 
 
-def get_recent_sessions(limit: int = 20) -> list:
-    """Fetch the most recent analysis sessions."""
+def get_recent_sessions(limit: int = 20, user_id: str = None) -> list:
+    """Fetch the most recent analysis sessions, filtered by user_id if provided."""
     try:
-        resp = (
-            supabase.table("analysis_sessions")
-            .select("*")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
-        )
+        query = supabase.table("analysis_sessions").select("*")
+        if user_id:
+            query = query.eq("user_id", user_id)
+        resp = query.order("created_at", desc=True).limit(limit).execute()
         return resp.data
     except Exception:
         return []
 
 
-def get_energy_history(limit: int = 50) -> list:
-    """Fetch energy history for trend charts."""
+def get_energy_history(limit: int = 50, user_id: str = None) -> list:
+    """Fetch energy history for trend charts, filtered by user_id if provided."""
     try:
-        resp = (
-            supabase.table("energy_history")
-            .select("*")
-            .order("recorded_at", desc=True)
-            .limit(limit)
-            .execute()
-        )
+        query = supabase.table("energy_history").select("*")
+        if user_id:
+            query = query.eq("user_id", user_id)
+        resp = query.order("recorded_at", desc=True).limit(limit).execute()
         return resp.data
     except Exception:
         return []
 
 
-def get_daily_energy_averages() -> list:
+def get_daily_energy_averages(user_id: str = None) -> list:
     """Query the daily_energy_avg view for dashboard charts."""
     try:
-        resp = supabase.table("daily_energy_avg").select("*").execute()
+        query = supabase.table("daily_energy_avg").select("*")
+        if user_id:
+            query = query.eq("user_id", user_id)
+        resp = query.execute()
         return resp.data
     except Exception:
         return []

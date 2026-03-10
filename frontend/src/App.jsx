@@ -17,10 +17,10 @@ import CognitiveInsights from './pages/CognitiveInsights';
 import RecoveryCycles from './pages/RecoveryCycles';
 import Settings from './pages/Settings';
 import LandingPage from './pages/LandingPage';
-import { supabase } from './supabaseClient';
+import { supabase, enableAutoRefresh } from './supabaseClient';
 import { Zap, Menu, Bell, LogOut, Settings as SettingsIcon, User, Search } from 'lucide-react';
 
-const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, userEmail }) => {
+const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, userEmail, userId }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isReasoningOpen, setReasoningOpen] = useState(true);
@@ -184,7 +184,7 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
                     Your cognitive bandwidth is <span className="text-emerald-400 font-medium">{energyLevel}%</span>. Tell me what you need help with.
                   </p>
                 </div>
-                {userRole !== 'parent' && <ChatInput onSendMessage={handleSendMessage} onAnalysisComplete={updateDashboardFromAPI} />}
+                {userRole !== 'parent' && <ChatInput onSendMessage={handleSendMessage} onAnalysisComplete={updateDashboardFromAPI} userId={userId} />}
               </motion.div>
             </div>
 
@@ -251,7 +251,7 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
 
       <main className="flex-1 relative z-10 flex flex-col h-full overflow-hidden">
         {/* Top Navigation Bar */}
-        <header className="h-14 border-b border-white/[0.06] flex items-center justify-between px-6 bg-[#0d1117]/80 backdrop-blur-md shrink-0">
+        <header className="h-14 border-b border-white/[0.06] flex items-center justify-between px-6 bg-[#0a0e1a]/90 backdrop-blur-xl shrink-0">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!isSidebarOpen)}
@@ -259,28 +259,28 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
             >
               <Menu size={18} />
             </button>
-            <span className="text-sm font-medium text-slate-300">{getPageTitle()}</span>
+            <span className="text-sm font-semibold text-white tracking-tight">{getPageTitle()}</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Search */}
-            <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400 transition-colors">
-              <Search size={18} />
+            <button className="p-2.5 hover:bg-white/[0.04] rounded-xl text-slate-400 hover:text-white transition-colors">
+              <Search size={17} />
             </button>
 
             {/* Notifications */}
-            <button className="p-2 relative hover:bg-white/5 rounded-lg text-slate-400 transition-colors">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full"></span>
+            <button className="p-2.5 relative hover:bg-white/[0.04] rounded-xl text-slate-400 hover:text-white transition-colors">
+              <Bell size={17} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_6px_rgba(99,102,241,0.8)]"></span>
             </button>
 
             {/* Profile */}
-            <div className="relative">
+            <div className="relative ml-1">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-white/[0.04] transition-colors"
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-violet-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white border border-white/10">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-[10px] font-bold text-white border border-white/10 shadow-[0_0_10px_rgba(99,102,241,0.3)]">
                   {initials}
                 </div>
               </button>
@@ -291,22 +291,22 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
                     initial={{ opacity: 0, y: 8, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    className="absolute right-0 top-10 w-56 bg-[#1a1f2e] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+                    className="absolute right-0 top-12 w-56 bg-[#0d1117] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
                   >
-                    <div className="p-3 border-b border-white/5">
-                      <p className="text-sm font-medium text-white truncate">{userName || 'User'}</p>
-                      <p className="text-xs text-slate-400 truncate">{userEmail || ''}</p>
+                    <div className="p-4 border-b border-white/[0.06]">
+                      <p className="text-sm font-semibold text-white truncate">{userName || 'User'}</p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{userEmail || ''}</p>
                     </div>
-                    <div className="p-1">
+                    <div className="p-1.5">
                       <button
                         onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-white/5 rounded-lg transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-300 hover:bg-white/[0.04] rounded-xl transition-colors"
                       >
                         <SettingsIcon size={14} /> Settings
                       </button>
                       <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors"
                       >
                         <LogOut size={14} /> Sign Out
                       </button>
@@ -341,25 +341,57 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Auth Listener
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-        setUserEmail(session.user.email);
-      }
-      setLoading(false);
-    });
+    const initAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) console.warn("Supabase auth error:", error.message);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-        setUserEmail(session.user.email);
-      }
-    });
+        const currentSession = data?.session || null;
+        setSession(currentSession);
 
-    return () => subscription.unsubscribe();
+        if (currentSession?.user) {
+          fetchUserProfile(currentSession.user.id);
+          setUserEmail(currentSession.user.email);
+        }
+      } catch (err) {
+        console.warn("Auth init error:", err.message);
+        setSession(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    let subscription;
+    try {
+      const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        // Reset user-specific data whenever auth state changes
+        if (newSession?.user?.id !== session?.user?.id) {
+          setEnergyLevel(72);
+          setMetrics({
+            stress: { value: 'Low', unit: 'Score', type: 'success' },
+            anxiety: { value: 'Stable', unit: 'Score', type: 'success' },
+            depression: { value: 'None', unit: 'Risk', type: 'success' },
+            tone: { value: 'Calm', unit: 'Analysis', type: 'success' },
+          });
+        }
+        setSession(newSession);
+        if (newSession?.user) {
+          fetchUserProfile(newSession.user.id);
+          setUserEmail(newSession.user.email);
+        }
+      });
+      subscription = data?.subscription;
+    } catch (err) {
+      console.warn("Auth state listener error:", err.message);
+    }
+
+    return () => {
+      if (subscription?.unsubscribe) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const fetchUserProfile = async (userId) => {
@@ -367,14 +399,13 @@ const App = () => {
       const { data, error } = await supabase
         .from('users_profile')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (data) {
         setUserName(data.full_name || 'User');
         setUserRole(data.role || 'student');
-        // Fetch latest metrics if available
-        // For now, use defaults or mock
+        if (data.email) setUserEmail(data.email);
       }
     } catch (e) {
       console.error("Profile fetch error:", e);
@@ -436,16 +467,31 @@ const App = () => {
   }, [energyLevel]);
 
 
+  // Handle login success — reset all user-specific state for clean session
+  const handleLoginSuccess = (loginSession) => {
+    // Reset dashboard state for fresh user
+    setEnergyLevel(72);
+    setMetrics({
+      stress: { value: 'Low', unit: 'Score', type: 'success' },
+      anxiety: { value: 'Stable', unit: 'Score', type: 'success' },
+      depression: { value: 'None', unit: 'Risk', type: 'success' },
+      tone: { value: 'Calm', unit: 'Analysis', type: 'success' },
+    });
+    setUserName('User');
+    setUserEmail('');
+    setSession(loginSession);
+  };
+
   if (loading) {
-    return <div className="h-screen w-screen bg-[#0a0e1a] flex items-center justify-center text-emerald-400">Loading NeuroPilot...</div>;
+    return <div className="h-screen w-screen bg-[#0a0e1a] flex items-center justify-center text-emerald-400">Loading NeuroMind...</div>;
   }
 
-  const layoutProps = { theme: 'dark', userRole, energyLevel, metrics, userName, userEmail };
+  const layoutProps = { theme: 'dark', userRole, energyLevel, metrics, userName, userEmail, userId: session?.user?.id || null };
 
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
       <Route path="/signup" element={<Signup />} />
 
       {/* Deep Work Mode - Standalone Page (accessible without auth, handles anonymous internally) */}

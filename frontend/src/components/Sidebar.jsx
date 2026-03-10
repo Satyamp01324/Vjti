@@ -9,7 +9,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole, use
 
   const initials = userName
     ? userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'NP';
+    : 'NM';
 
   let navItems = [
     { name: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -28,12 +28,16 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole, use
     <motion.div
       initial={false}
       animate={{ width: isOpen ? 240 : 68 }}
-      className="h-screen bg-[#0d1117] border-r border-white/[0.06] flex flex-col z-50 overflow-hidden flex-shrink-0 relative transition-all duration-300 hidden md:flex"
+      className="h-screen bg-[#0a0e1a] border-r border-white/[0.06] flex flex-col z-50 overflow-hidden flex-shrink-0 relative transition-all duration-300 hidden md:flex"
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-14 border-b border-white/[0.06] shrink-0">
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-          <Zap className="w-4 h-4 fill-white text-white" />
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06] shrink-0">
+        <div className="flex-shrink-0 w-9 h-9 rounded-xl overflow-hidden bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+          <img
+            src="/images/neuromind-logo.png"
+            alt="NeuroMind"
+            className="w-7 h-7 object-contain"
+          />
         </div>
         <AnimatePresence mode='wait'>
           {isOpen && (
@@ -41,9 +45,9 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole, use
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="text-sm font-semibold text-white whitespace-nowrap"
+              className="text-sm font-bold text-white whitespace-nowrap tracking-tight"
             >
-              NeuroPilot
+              Neuro<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">Mind</span>
             </motion.span>
           )}
         </AnimatePresence>
@@ -52,7 +56,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole, use
       {/* Toggle Button */}
       <button
         onClick={toggleSidebar}
-        className="absolute top-3.5 right-[-12px] w-6 h-6 bg-[#1a1f2e] border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-emerald-500 hover:border-emerald-500 transition-all shadow-lg z-50"
+        className="absolute top-4 right-[-12px] w-6 h-6 bg-[#0a0e1a] border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-indigo-500 hover:border-indigo-500 transition-all shadow-lg z-50"
       >
         {isOpen ? <div className="text-xs">&lt;</div> : <Menu size={12} />}
       </button>
@@ -71,22 +75,22 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole, use
             >
               <div
                 className={`
-                  relative flex items-center w-full px-3 py-2.5 rounded-lg transition-all duration-200 group
+                  relative flex items-center w-full px-3 py-2.5 rounded-xl transition-all duration-200 group
                   ${isActive
-                    ? 'text-white bg-white/[0.06]'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'}
+                    ? 'text-white bg-indigo-500/10 border border-indigo-500/20'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] border border-transparent'}
                 `}
               >
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active"
-                    className="absolute inset-y-0 left-0 w-[3px] bg-emerald-500 rounded-r-full"
+                    className="absolute inset-y-0 left-0 w-[3px] bg-indigo-500 rounded-r-full shadow-[0_0_10px_rgba(99,102,241,0.8)]"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
 
                 <item.icon
-                  className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-emerald-400' : ''}`}
+                  className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-indigo-400' : ''}`}
                   strokeWidth={isActive ? 2.5 : 1.8}
                 />
 
@@ -118,13 +122,13 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole, use
       {/* User Profile Footer */}
       <div className="border-t border-white/[0.06] p-2 shrink-0">
         <div
-          className={`flex items-center gap-3 p-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer ${!isOpen && 'justify-center'}`}
+          className={`flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer ${!isOpen && 'justify-center'}`}
         >
           <div className="relative shrink-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white border border-white/10">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-[10px] font-bold text-white border border-white/10">
               {initials}
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0d1117]" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0a0e1a]" />
           </div>
 
           <AnimatePresence>
