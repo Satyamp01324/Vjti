@@ -6,10 +6,11 @@
  */
 
 const VITE_API_URL = import.meta.env.VITE_API_URL;
-const isDev = import.meta.env.DEV;
+// Always default to relative path "" so requests route through Vite proxy (/api -> http://127.0.0.1:8000)
+// This avoids Mixed Content blocks (HTTPS -> HTTP) and cross-origin failures over Cloudflare tunnels.
 const API_BASE = (VITE_API_URL && VITE_API_URL !== "undefined")
   ? VITE_API_URL
-  : (isDev ? "http://127.0.0.1:8000" : "");
+  : "";
 
 // ─── helpers ─────────────────────────────────────────────────
 
