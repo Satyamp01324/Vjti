@@ -132,6 +132,23 @@ const Login = ({ setUserRole, onLoginSuccess }) => {
                                 </>
                             )}
                         </motion.button>
+
+                        <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 flex items-center justify-between">
+                            <div>
+                                <span className="font-semibold block text-white">Reviewer Test Account:</span>
+                                <span className="text-slate-400">tester.neuropilot@example.com</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setEmail('tester.neuropilot@example.com');
+                                    setPassword('Password@1234');
+                                }}
+                                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition-colors"
+                            >
+                                Auto-Fill
+                            </button>
+                        </div>
                     </form>
 
                     <div className="mt-8 text-center text-xs text-slate-500">

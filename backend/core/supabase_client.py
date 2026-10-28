@@ -13,12 +13,15 @@ key: Optional[str] = os.environ.get("SUPABASE_KEY")
 logger = logging.getLogger("supabase_client")
 
 try:
-    if url and key and not url.startswith("your_"):
+    if url and key and not url.startswith("your_") and "mock" not in url:
         from supabase import create_client, Client
-        supabase: Optional[Client] = create_client(url, key)
+        supabase = create_client(url, key)
+        logger.info("Connected to Cloud Supabase client.")
     else:
-        logger.warning("SUPABASE_URL or SUPABASE_KEY missing; using mock/null client.")
-        supabase = None
+        logger.info("Using local SQLite MockSupabaseClient.")
+        from core.mock_database import MockSupabaseClient
+        supabase = MockSupabaseClient()
 except Exception as e:
-    logger.warning(f"Failed to initialize Supabase client: {e}; using None")
-    supabase = None
+    logger.warning(f"Failed to initialize Supabase client: {e}; falling back to local MockSupabaseClient")
+    from core.mock_database import MockSupabaseClient
+    supabase = MockSupabaseClient()

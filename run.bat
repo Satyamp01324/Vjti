@@ -7,6 +7,7 @@ echo.
 REM Set UTF-8 encoding to prevent Unicode errors on Windows
 chcp 65001 >nul
 set PYTHONIOENCODING=utf-8
+set PYTHONUTF8=1
 
 echo [STEP 1/3] Checking if backend is already running...
 curl -s http://localhost:8000/api/health >nul 2>&1
@@ -36,7 +37,7 @@ echo.
 REM Start backend if not running
 if %BACKEND_RUNNING%==0 (
     echo Starting Backend Server...
-    start "NeuroPilot Backend" cmd /k "cd backend && uvicorn main:app --reload --port 8000"
+    start "NeuroPilot Backend" cmd /k "cd backend && call .venv\Scripts\activate.bat && uvicorn main:app --reload --port 8000"
     echo Waiting 5 seconds for backend to initialize...
     timeout /t 5 /nobreak >nul
 ) else (

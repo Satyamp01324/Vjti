@@ -10,19 +10,18 @@ from __future__ import annotations
 import os
 from typing import Optional
 from dotenv import load_dotenv
-from supabase import create_client, Client
 
 load_dotenv()
 
-_url: str = os.environ.get("SUPABASE_URL", "")
-_key: str = os.environ.get("SUPABASE_KEY", "")
-_supabase: Client = create_client(_url, _key)
+from core.supabase_client import supabase as _supabase
 
 
 # ─── helpers ──────────────────────────────────────────────
 
 def _upsert_profile(user_id: str, email: str, full_name: Optional[str] = None):
     """Insert or update a row in users_profile so it stays in sync with auth.users."""
+    if not _supabase:
+        return
     row = {"id": user_id, "email": email}
     if full_name:
         row["full_name"] = full_name
@@ -36,6 +35,8 @@ def register(email: str, password: str, full_name: Optional[str] = None) -> dict
     Create a new user via Supabase Auth and persist profile data.
     Returns {status, user, session} on success.
     """
+    if not _supabase:
+        return {"status": "error", "error": "Supabase is not configured. Please set SUPABASE_URL and SUPABASE_KEY."}
     try:
         result = _supabase.auth.sign_up(
             {"email": email, "password": password}
@@ -73,6 +74,8 @@ def login(email: str, password: str) -> dict:
     Authenticate via Supabase Auth.
     Returns {status, user, session} on success.
     """
+    if not _supabase:
+        return {"status": "error", "error": "Supabase is not configured. Please set SUPABASE_URL and SUPABASE_KEY."}
     try:
         result = _supabase.auth.sign_in_with_password(
             {"email": email, "password": password}
@@ -98,6 +101,8 @@ def login(email: str, password: str) -> dict:
         if not profile:
             _upsert_profile(user.id, email)
             full_name = ""
+        elif isinstance(profile, list):
+            full_name = profile[0].get("full_name", "") if profile else ""
         else:
             full_name = profile.get("full_name", "")
 
@@ -122,6 +127,8 @@ def login(email: str, password: str) -> dict:
 
 def get_profile(user_id: str) -> dict:
     """Fetch a user's profile from users_profile."""
+    if not _supabase:
+        return {"status": "error", "error": "Supabase is not configured."}
     try:
         resp = (
             _supabase.table("users_profile")
@@ -139,6 +146,8 @@ def get_profile(user_id: str) -> dict:
 
 def update_profile(user_id: str, full_name: Optional[str] = None) -> dict:
     """Update profile fields in users_profile."""
+    if not _supabase:
+        return {"status": "error", "error": "Supabase is not configured."}
     try:
         updates = {}
         if full_name is not None:
