@@ -93,7 +93,7 @@ const DragToOpenGate = ({ onOpen, userName = 'Code XR' }) => {
               style={{ x }}
               onDragEnd={handleDragEnd}
               whileTap={{ scale: 1.05 }}
-              className="relative z-10 w-13 h-13 rounded-full bg-gradient-to-r from-[#FF553E] to-[#FF704E] text-white flex items-center justify-center shadow-[0_4px_20px_rgba(255,85,62,0.6)] cursor-grab active:cursor-grabbing ring-2 ring-white/20"
+              className="relative z-10 w-[52px] h-[52px] rounded-full bg-gradient-to-r from-[#FF553E] to-[#FF704E] text-white flex items-center justify-center shadow-[0_4px_20px_rgba(255,85,62,0.6)] cursor-grab active:cursor-grabbing ring-2 ring-white/20"
             >
               {unlocked ? (
                 <Unlock size={20} className="text-white animate-pulse" />
@@ -120,3 +120,4 @@ const DragToOpenGate = ({ onOpen, userName = 'Code XR' }) => {
 };
 
 export default DragToOpenGate;
+

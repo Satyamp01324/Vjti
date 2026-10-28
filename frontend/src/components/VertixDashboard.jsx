@@ -4,7 +4,8 @@ import {
   Sun, Moon, Search, Bell, Clock, ChevronDown, Grid, Calendar,
   MessageSquare, FileText, Hexagon, Settings, HelpCircle, LogOut,
   ArrowRightLeft, Filter, Sliders, Check, MoreHorizontal, ArrowUpRight,
-  ArrowDownRight, ShieldCheck, Sparkles, Brain, DollarSign, Wallet
+  ArrowDownRight, ShieldCheck, Sparkles, Brain, DollarSign, Wallet,
+  TrendingUp
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -423,23 +424,23 @@ const VertixDashboard = ({ userName = 'Code XR', userEmail = 'hello@codexr.studi
               <div className="pt-2 h-44 flex items-end justify-between gap-2.5 px-2">
                 {barChartData.map((d, i) => (
                   <div key={d.month} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                    <div className="w-full flex flex-col items-center gap-1 relative cursor-pointer">
+                    <div className="w-full h-36 flex flex-col justify-end items-center gap-1.5 relative cursor-pointer">
                       {/* Top Bar (Coral with subtle texture/stripes) */}
                       <motion.div
                         initial={{ height: 0 }}
-                        animate={{ height: `${d.top}%` }}
+                        animate={{ height: `${d.top * 1.1}px` }}
                         transition={{ delay: i * 0.05, duration: 0.5 }}
-                        className="w-full rounded-md bg-[#FF553E] opacity-90 group-hover:opacity-100 transition-opacity"
+                        className="w-full rounded-md bg-[#FF6954] shadow-sm group-hover:brightness-110 transition-all"
                         style={{
-                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.2) 3px, rgba(255,255,255,0.2) 6px)'
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.25) 3px, rgba(255,255,255,0.25) 6px)'
                         }}
                       />
-                      {/* Bottom Bar (Black/Slate) */}
+                      {/* Bottom Bar (Black/Dark Slate) */}
                       <motion.div
                         initial={{ height: 0 }}
-                        animate={{ height: `${d.bottom}%` }}
+                        animate={{ height: `${d.bottom * 1.1}px` }}
                         transition={{ delay: i * 0.05 + 0.1, duration: 0.5 }}
-                        className="w-full rounded-md bg-[#181A20]"
+                        className="w-full rounded-md bg-[#181A20] shadow-sm"
                       />
                     </div>
                     <span className="text-[10px] font-semibold text-slate-400 group-hover:text-black">
@@ -579,3 +580,4 @@ const VertixDashboard = ({ userName = 'Code XR', userEmail = 'hello@codexr.studi
 };
 
 export default VertixDashboard;
+
