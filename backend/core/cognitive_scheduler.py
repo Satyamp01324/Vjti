@@ -20,10 +20,19 @@ import traceback
 from typing import Dict, List, Tuple, Optional
 
 from google import genai
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
+
+try:
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+    from google.auth.transport.requests import Request
+    GOOGLE_CALENDAR_AVAILABLE = True
+except Exception as e:
+    GOOGLE_CALENDAR_AVAILABLE = False
+    Credentials = None
+    InstalledAppFlow = None
+    build = None
+    Request = None
 
 from core.supabase_client import supabase
 
