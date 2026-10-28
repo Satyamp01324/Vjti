@@ -29,6 +29,8 @@ import RecoveryCycles from './pages/RecoveryCycles';
 import Settings from './pages/Settings';
 import PrivacyPage from './pages/PrivacyPage';
 import LandingPage from './pages/LandingPage';
+import VertixDashboard from './components/VertixDashboard';
+import DragToOpenGate from './components/DragToOpenGate';
 import { supabase, enableAutoRefresh } from './supabaseClient';
 import { Zap, Menu, Bell, LogOut, Settings as SettingsIcon, User, Search, Coffee, Moon } from 'lucide-react';
 
@@ -587,8 +589,10 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
 const App = () => {
   const [session, setSession] = useState(null);
   const [userRole, setUserRole] = useState('student');
-  const [userName, setUserName] = useState('User');
+  const [userName, setUserName] = useState('Code XR');
   const [userEmail, setUserEmail] = useState('');
+  const [hasUnlockedDashboard, setHasUnlockedDashboard] = useState(false);
+  const [dashboardView, setDashboardView] = useState('vertix');
   const [energyLevel, setEnergyLevel] = useState(72);
   const [metrics, setMetrics] = useState({
     stress: { value: 'Low', unit: 'Score', type: 'success' },
@@ -735,9 +739,10 @@ const App = () => {
       depression: { value: 'None', unit: 'Risk', type: 'success' },
       tone: { value: 'Calm', unit: 'Analysis', type: 'success' },
     });
-    setUserName('User');
-    setUserEmail('');
+    setUserName(loginSession?.user?.user_metadata?.full_name || 'Code XR');
+    setUserEmail(loginSession?.user?.email || 'hello@codexr.studio');
     setSession(loginSession);
+    setHasUnlockedDashboard(false); // Activates the drag-to-open gate right after login!
   };
 
   if (loading) {
@@ -756,7 +761,64 @@ const App = () => {
       <Route path="/deep-work" element={<DeepWorkMode />} />
 
       {/* Dashboard Routes with Layout */}
-      <Route path="/dashboard" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+      <Route
+        path="/dashboard"
+        element={
+          session ? (
+            <>
+              {!hasUnlockedDashboard && (
+                <DragToOpenGate
+                  userName={userName || 'Code XR'}
+                  onOpen={() => setHasUnlockedDashboard(true)}
+                />
+              )}
+              {dashboardView === 'vertix' ? (
+                <div className="relative">
+                  <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-black/80 backdrop-blur-md border border-white/20 p-1.5 rounded-full shadow-2xl">
+                    <button
+                      onClick={() => setHasUnlockedDashboard(false)}
+                      className="px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-white transition-all flex items-center gap-1.5"
+                    >
+                      🔒 Re-test Drag
+                    </button>
+                    <button
+                      onClick={() => setDashboardView('classic')}
+                      className="px-3 py-1.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 transition-all flex items-center gap-1.5"
+                    >
+                      🧠 Classic View
+                    </button>
+                  </div>
+                  <VertixDashboard
+                    userName={userName || 'Code XR'}
+                    userEmail={userEmail || 'hello@codexr.studio'}
+                    onLogout={async () => {
+                      try {
+                        await supabase.auth.signOut();
+                      } catch (e) {}
+                      setSession(null);
+                      setHasUnlockedDashboard(false);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-black/80 backdrop-blur-md border border-white/20 p-1.5 rounded-full shadow-2xl">
+                    <button
+                      onClick={() => setDashboardView('vertix')}
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#FF553E] text-white hover:bg-[#FF6F52] transition-all flex items-center gap-1.5 shadow-lg"
+                    >
+                      ✨ Vertix Dashboard
+                    </button>
+                  </div>
+                  <DashboardLayout {...layoutProps} />
+                </div>
+              )}
+            </>
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
       <Route path="/tasks" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
       <Route path="/insights" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
       <Route path="/recovery" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
