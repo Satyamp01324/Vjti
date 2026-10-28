@@ -4,7 +4,7 @@ import { Clock, GripVertical, Plus, X, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_BASE = import.meta.env.VITE_API_URL !== undefined ? import.meta.env.VITE_API_URL : '';
 
 const SmartCalendar = () => {
   const [tasks, setTasks] = useState([

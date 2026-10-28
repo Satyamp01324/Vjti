@@ -50,7 +50,7 @@ def test_env():
         p(name, "PASS" if v else "WARN", v[:30] + "..." if v else "Not set")
 
     vapi = os.getenv("VITE_API_URL")
-    p("Frontend VITE_API_URL", "PASS" if vapi else "FAIL", vapi or "NOT SET")
+    p("Frontend VITE_API_URL", "PASS" if vapi is not None else "FAIL", vapi if vapi != "" else "Relative proxy (/api)")
 
 # ═══════════════════════════════════════════════════════
 # 2. BACKEND SERVER
@@ -300,8 +300,8 @@ def test_integration():
     # Check API_URL matches
     vite_url = os.getenv("VITE_API_URL", "")
     p("API URL alignment",
-      "PASS" if "localhost:8000" in vite_url else "WARN",
-      f"Frontend points to: {vite_url}")
+      "PASS" if "localhost:8000" in vite_url or vite_url == "" else "WARN",
+      f"Frontend points to: {vite_url if vite_url != '' else 'Relative Proxy (/api)'}")
 
 # ═══════════════════════════════════════════════════════
 # MAIN

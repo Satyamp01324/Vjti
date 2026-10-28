@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { Activity, Brain, Clock, Zap, AlertTriangle, ChevronRight, TrendingUp, Heart, RefreshCw, Coffee } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API = import.meta.env.VITE_API_URL !== undefined ? import.meta.env.VITE_API_URL : '';
 
 const getUserId = () => {
     try {
