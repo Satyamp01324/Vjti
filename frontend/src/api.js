@@ -141,3 +141,397 @@ export function subscribeToEnergyHistory(callback, userId = null) {
 
   return () => supabase.removeChannel(channel);
 }
+
+// ─── SPOONSENSE MILESTONE 1 & 2 API CLIENT ──────────────────
+
+/** Get today's real-time energy snapshot & why-factors */
+export async function getTodaySnapshot(userId, probeRt = null, baselineRt = null) {
+  const params = new URLSearchParams();
+  if (probeRt !== null) params.set("probe_rt", probeRt);
+  if (baselineRt !== null) params.set("baseline_rt", baselineRt);
+  const qs = params.toString();
+  return request(`/api/me/snapshot/today/${userId || 'anonymous'}${qs ? '?' + qs : ''}`);
+}
+
+/** Get 7-day energy weather forecast */
+export async function getForecast(userId, startDate = null) {
+  const params = new URLSearchParams();
+  if (startDate) params.set("start_date", startDate);
+  const qs = params.toString();
+  return request(`/api/forecast/${userId || 'anonymous'}${qs ? '?' + qs : ''}`);
+}
+
+/** Submit 20-second game probe result (Pulse, Switch, Pop) */
+export async function submitGameResult(data) {
+  return request("/api/games/result", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+/** Fetch user's cognitive game baseline info */
+export async function getGameBaseline(userId) {
+  return request(`/api/games/baseline/${userId || 'anonymous'}`);
+}
+
+/** Manually adjust today's spoons using the slider (FR-SP-04) */
+export async function overrideSpoons(userId, spoons, targetDate = null) {
+  return request("/api/snapshot/override", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      spoons: Number(spoons),
+      target_date: targetDate,
+    }),
+  });
+}
+
+/** Parse an ICS calendar string */
+export async function parseICS(icsContent) {
+  return request("/api/timetable/ics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ics_content: icsContent }),
+  });
+}
+
+/** Get VJTI sample timetable ICS */
+export async function getSampleICS() {
+  return request("/api/timetable/sample-ics");
+}
+
+/** Parse manual weekly grid */
+export async function parseGrid(gridData) {
+  return request("/api/timetable/grid", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grid: gridData }),
+  });
+}
+
+/** Save confirmed timetable blocks */
+export async function saveTimetable(userId, blocks) {
+  return request("/api/timetable", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      blocks,
+    }),
+  });
+}
+
+/** Get saved timetable blocks */
+export async function getTimetable(userId) {
+  return request(`/api/timetable/${userId || 'anonymous'}`);
+}
+
+/** Save commute profile */
+export async function saveCommute(commuteData) {
+  return request("/api/commute", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(commuteData),
+  });
+}
+
+/** Get commute profile */
+export async function getCommute(userId) {
+  return request(`/api/commute/${userId || 'anonymous'}`);
+}
+
+
+// ─── SPOONSENSE MILESTONE 3 API CLIENT ──────────────────────
+
+/** Add task with auto-computed spoon cost badge (FEAT-C1) */
+export async function addTask(userId, taskData) {
+  return request("/api/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      ...taskData,
+    }),
+  });
+}
+
+/** Get tasks with spoon cost badges (FEAT-C1) */
+export async function getTasks(userId, includeCompleted = false) {
+  return request(`/api/tasks/${userId || 'anonymous'}?include_completed=${includeCompleted}`);
+}
+
+/** Complete a task (FEAT-C1, FEAT-E2) */
+export async function completeTask(userId, taskId) {
+  return request("/api/tasks/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      task_id: taskId,
+    }),
+  });
+}
+
+/** Add a rest block that credits spoons back (FEAT-C5) */
+export async function addRestBlock(userId, title = "Rest & Recharge", minutes = 20) {
+  return request("/api/tasks/rest-block", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      title,
+      minutes,
+    }),
+  });
+}
+
+/** Generate today's capacity-sized day plan (FEAT-C2) */
+export async function planToday(userId, targetDate = null) {
+  return request("/api/plan/today", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      target_date: targetDate,
+    }),
+  });
+}
+
+/** Generate 7-day capacity-sized plan (FEAT-C2) */
+export async function planWeek(userId, startDate = null) {
+  return request("/api/plan/week", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      start_date: startDate,
+    }),
+  });
+}
+
+/** Auto-reshuffle overloaded tasks to lighter days (FEAT-C3) */
+export async function reshufflePlan(userId) {
+  return request("/api/plan/reshuffle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+    }),
+  });
+}
+
+/** Generate polite, academic-framed extension email draft (FEAT-C4) */
+export async function generateExtensionEmail(data) {
+  return request("/api/plan/extension-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+/** Get user's Forgiving Garden state (FEAT-E2) */
+export async function getGarden(userId) {
+  return request(`/api/garden/${userId || 'anonymous'}`);
+}
+
+/** Record garden action (login, micro_step, rest, etc.) (FEAT-E2) */
+export async function recordGardenAction(userId, action) {
+  return request("/api/garden/action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      action,
+    }),
+  });
+}
+
+/** Get evening check-in energy level labels (FEAT-E3) */
+export async function getEveningLabels() {
+  return request("/api/evening/labels");
+}
+
+/** Submit one-tap evening check-in (FEAT-E3) */
+export async function submitEveningCheckin(userId, energyLevel, optionalNote = "") {
+  return request("/api/evening/checkin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      energy_level: energyLevel,
+      optional_note: optionalNote,
+    }),
+  });
+}
+
+/** Skip evening check-in with zero penalty (FEAT-E3) */
+export async function skipEveningCheckin(userId) {
+  return request("/api/evening/skip", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      action: "skip",
+    }),
+  });
+}
+
+/** Get evening check-in history (FEAT-E3) */
+export async function getEveningHistory(userId, limit = 14) {
+  return request(`/api/evening/history/${userId || 'anonymous'}?limit=${limit}`);
+}
+
+/** Get Dopamine Menu (FEAT-E4) */
+export async function getDopamineMenu(userId) {
+  return request(`/api/dopamine/menu/${userId || 'anonymous'}`);
+}
+
+/** Engage with a dopamine menu item (FEAT-E4) */
+export async function engageDopamineItem(userId, itemId) {
+  return request("/api/dopamine/engage", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      item_id: itemId,
+    }),
+  });
+}
+
+/** Add custom item to dopamine menu (FEAT-E4) */
+export async function addDopamineItem(userId, itemData) {
+  return request("/api/dopamine/add-item", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      ...itemData,
+    }),
+  });
+}
+
+// ── Milestone 4: Task Shrinker API (FEAT-D1, D2, D3, D4, D5) ────────────────
+
+/** Shrink a task into micro-steps (FEAT-D1) */
+export async function shrinkTask({ title, taskType = 'other', liveSpoons = 6.0, userNote = '', userId }) {
+  return request("/api/sequence", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      title,
+      task_type: taskType,
+      live_spoons: liveSpoons,
+      user_note: userNote,
+    }),
+  });
+}
+
+/** "Smaller Please" sub-divider (FEAT-D3) */
+export async function shrinkSmaller({ stepText, taskType = 'other', recursionDepth = 0, userId }) {
+  return request("/api/sequence/smaller", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      step_text: stepText,
+      task_type: taskType,
+      recursion_depth: recursionDepth,
+    }),
+  });
+}
+
+/** Get coping strategies for a task type (FEAT-D2) */
+export async function getCopingStrategies(taskType, situation = 'stuck') {
+  return request(`/api/sequence/strategies/${taskType}?situation=${situation}`);
+}
+
+/** Explicit offline sequence fallback (FEAT-D4) */
+export async function getOfflineSequence({ title, taskType = 'other', liveSpoons = 6.0, userId }) {
+  return request("/api/sequence/offline", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      title,
+      task_type: taskType,
+      live_spoons: liveSpoons,
+    }),
+  });
+}
+
+
+// ── Milestone 4: Google Calendar Sync API (FEAT-G3) ─────────────────────────
+
+/** Get Google Calendar sync status */
+export async function getCalendarStatus(userId) {
+  return request(`/api/calendar/status/${userId || 'anonymous'}`);
+}
+
+/** Sync planned blocks to Google Calendar tagged [SpoonSense] */
+export async function syncCalendar(userId, tasks = null, targetDate = null) {
+  return request("/api/calendar/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      tasks,
+      target_date: targetDate,
+    }),
+  });
+}
+
+/** 1-Tap Google Calendar Disconnect */
+export async function disconnectCalendar(userId) {
+  return request("/api/calendar/disconnect", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+    }),
+  });
+}
+
+/** Update Google Calendar preferences */
+export async function setCalendarPreferences(userId, readOnly = false, autoSync = true) {
+  return request("/api/calendar/preferences", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId || 'anonymous',
+      read_only: readOnly,
+      auto_sync: autoSync,
+    }),
+  });
+}
+
+
+// ── Milestone 5: Privacy, Export, Delete & Demo Seeds API (FEAT-G4, FEAT-A3) ─
+
+/** Seed instant demonstration profile: 'aarav' or 'meera' (FEAT-A3) */
+export async function seedDemoProfile(persona, userId = null) {
+  return request(`/api/demo/seed/${persona}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+/** Get transparency privacy manifest (FEAT-G4, FR-ST-01) */
+export async function getPrivacyManifest() {
+  return request("/api/me/privacy-manifest");
+}
+
+/** Export all student data archive as JSON (FEAT-G4, FR-ST-02) */
+export async function exportUserData(userId) {
+  return request(`/api/me/export/${userId || 'anonymous'}`);
+}
+
+/** Permanently purge all user records (FEAT-G4, FR-ST-03) */
+export async function deleteUserData(userId) {
+  return request(`/api/me/${userId || 'anonymous'}`, {
+    method: "DELETE",
+  });
+}

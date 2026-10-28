@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, List, Zap, Shield, Moon, Settings as SettingsIcon, Menu, Brain } from 'lucide-react';
+import { Home, List, Zap, Shield, Moon, Settings as SettingsIcon, Menu, Brain, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -17,6 +17,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, userRole, use
     { name: 'Cognitive Insights', icon: Brain, path: '/insights' },
     { name: 'Deep Work Mode', icon: Shield, path: '/deep-work' },
     { name: 'Recovery Cycles', icon: Moon, path: '/recovery' },
+    { name: 'Privacy & Ethics', icon: Lock, path: '/privacy' },
     { name: 'Settings', icon: SettingsIcon, path: '/settings' },
   ];
 

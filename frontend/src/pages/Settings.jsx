@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Bell, Check, Moon, Monitor, Clock, Brain, Globe, Shield, LogOut } from 'lucide-react';
+import { User, Bell, Check, Moon, Monitor, Clock, Brain, Globe, Shield, LogOut, Calendar, RefreshCw, Unlink, Lock, Eye, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getCalendarStatus, disconnectCalendar, setCalendarPreferences } from '../api';
 
 const SettingsSection = ({ title, description, children }) => (
   <div className="mb-8">
@@ -64,8 +65,75 @@ const Settings = () => {
   const [language, setLanguage] = useState('English');
   const [focusDuration, setFocusDuration] = useState('45 min');
   const [autoSaver, setAutoSaver] = useState(true);
+  const [calConnected, setCalConnected] = useState(false);
+  const [calReadOnly, setCalReadOnly] = useState(false);
+  const [calAutoSync, setCalAutoSync] = useState(true);
+  const [calMessage, setCalMessage] = useState('');
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    return localStorage.getItem('spoonsense_reduced_motion') === 'true';
+  });
+  const [highContrast, setHighContrast] = useState(() => {
+    return localStorage.getItem('spoonsense_high_contrast') === 'true';
+  });
+
+  const handleToggleReducedMotion = (val) => {
+    setReducedMotion(val);
+    localStorage.setItem('spoonsense_reduced_motion', String(val));
+    if (val) {
+      document.documentElement.classList.add('reduce-motion');
+    } else {
+      document.documentElement.classList.remove('reduce-motion');
+    }
+  };
+
+  const handleToggleHighContrast = (val) => {
+    setHighContrast(val);
+    localStorage.setItem('spoonsense_high_contrast', String(val));
+    if (val) {
+      document.documentElement.classList.add('high-contrast');
+    } else {
+      document.documentElement.classList.remove('high-contrast');
+    }
+  };
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    async function loadCal() {
+      try {
+        const res = await getCalendarStatus('demo_student');
+        if (res) {
+          setCalConnected(res.connected);
+          setCalReadOnly(res.read_only);
+          setCalAutoSync(res.auto_sync);
+        }
+      } catch (e) {
+        console.warn('Could not load calendar status', e);
+      }
+    }
+    loadCal();
+  }, []);
+
+  const handleDisconnectCalendar = async () => {
+    try {
+      const res = await disconnectCalendar('demo_student');
+      setCalConnected(false);
+      setCalMessage(res.message || 'Google Calendar disconnected.');
+      setTimeout(() => setCalMessage(''), 4000);
+    } catch (e) {
+      setCalMessage('Error disconnecting calendar.');
+    }
+  };
+
+  const handleToggleReadOnly = async (val) => {
+    setCalReadOnly(val);
+    await setCalendarPreferences('demo_student', val, calAutoSync);
+  };
+
+  const handleToggleAutoSync = async (val) => {
+    setCalAutoSync(val);
+    await setCalendarPreferences('demo_student', calReadOnly, val);
+  };
 
   const handleSignOut = async () => {
     try {
@@ -137,6 +205,70 @@ const Settings = () => {
           label="Desktop Alerts"
           description="Break reminders and meeting nudges."
           rightElement={<Toggle active={desktopNotifs} onToggle={setDesktopNotifs} />}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Google Calendar Sync (FEAT-G3)" description="Sync planned capacity blocks tagged [SpoonSense].">
+        <SettingRow
+          icon={Calendar}
+          label="Two-Way Calendar Sync"
+          description="Paces focus blocks into your calendar without duplicate orphans on reshuffle."
+          rightElement={<Toggle active={calAutoSync} onToggle={handleToggleAutoSync} />}
+        />
+        <SettingRow
+          icon={RefreshCw}
+          label="Read-Only Calendar Mode"
+          description="View your calendar busy/free blocks without writing SpoonSense events."
+          rightElement={<Toggle active={calReadOnly} onToggle={handleToggleReadOnly} />}
+        />
+        <SettingRow
+          icon={Unlink}
+          label="1-Tap Disconnect"
+          description="Instantly remove all [SpoonSense] blocks from Google Calendar and revoke access."
+          rightElement={
+            <button
+              onClick={handleDisconnectCalendar}
+              className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors"
+            >
+              Disconnect Now
+            </button>
+          }
+        />
+        {calMessage && (
+          <div className="px-4 py-2.5 bg-violet-500/10 border-t border-violet-500/20 text-xs text-violet-300">
+            {calMessage}
+          </div>
+        )}
+      </SettingsSection>
+
+      <SettingsSection title="Accessibility & Motion (FEAT-E5)" description="Comfort settings for cognitive and sensory pacing.">
+        <SettingRow
+          icon={Sparkles}
+          label="Reduced Motion Mode"
+          description="Disables floating particles, meter transitions, and plant sway animations (FR-ST-04)."
+          rightElement={<Toggle active={reducedMotion} onToggle={handleToggleReducedMotion} />}
+        />
+        <SettingRow
+          icon={Eye}
+          label="High Contrast Text"
+          description="Increases contrast ratio to 7:1 AAA standard for optimal legibility (FR-ST-05)."
+          rightElement={<Toggle active={highContrast} onToggle={handleToggleHighContrast} />}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Privacy & Data Control (FEAT-G4)" description="Zero clinical surveillance, transparency manifest, and 1-click delete.">
+        <SettingRow
+          icon={Lock}
+          label="Privacy Policy & Plain-Word Manifest"
+          description="View data inventory, what is stored, what is never collected, and download JSON export."
+          rightElement={
+            <button
+              onClick={() => navigate('/privacy')}
+              className="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-xs font-medium transition-colors"
+            >
+              Open Privacy Center
+            </button>
+          }
         />
       </SettingsSection>
 

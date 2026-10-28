@@ -1,10 +1,21 @@
-import whisper
 import tempfile
 import os
 import time
 from pathlib import Path
 from typing import Optional
 import json
+
+# Try to import Whisper
+try:
+    import whisper
+    WHISPER_AVAILABLE = True
+    print("Loading Whisper model...")
+    model = whisper.load_model("base")
+    print("✓ Whisper model loaded successfully")
+except Exception as e:
+    WHISPER_AVAILABLE = False
+    model = None
+    print(f"ℹ Whisper not available locally: {e}. Falling back to Groq if configured.")
 
 # Try to import Groq for faster transcription fallback
 try:
@@ -22,15 +33,6 @@ except ImportError:
     GROQ_AVAILABLE = False
     groq_client = None
     print("ℹ Groq not installed. Install 'groq' for faster transcription: pip install groq")
-
-# Load Whisper model (using 'base' for balance between speed and accuracy)
-# Options: tiny, base, small, medium, large
-# tiny: fastest but less accurate (~1GB RAM)
-# base: good balance (~1GB RAM, ~32s for 1 min audio)
-# small: better accuracy (~2GB RAM)
-print("Loading Whisper model...")
-model = whisper.load_model("base")
-print("✓ Whisper model loaded successfully")
 
 # Language code mapping (ISO 639-1 to full names)
 LANGUAGE_NAMES = {

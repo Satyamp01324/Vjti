@@ -10,22 +10,120 @@ import ReasoningPanel from './components/ReasoningPanel';
 import MetricCard from './components/MetricCard';
 import NeuralBackground from './components/NeuralBackground';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import SpoonMeter from './components/SpoonMeter';
+import WhyPanelModal from './components/WhyPanelModal';
+import EnergyWeatherBar from './components/EnergyWeatherBar';
+import PulseGameModal from './components/PulseGameModal';
+import TaskPlanner from './components/TaskPlanner';
+import ForgivingGarden from './components/ForgivingGarden';
+import EveningCheckinModal from './components/EveningCheckinModal';
+import DopamineMenuModal from './components/DopamineMenuModal';
+import ExtensionEmailModal from './components/ExtensionEmailModal';
+import TaskShrinkerModal from './components/TaskShrinkerModal';
+import { getTodaySnapshot, getForecast, overrideSpoons, getGarden, seedDemoProfile } from './api';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import DeepWorkMode from './pages/DeepWorkMode';
 import CognitiveInsights from './pages/CognitiveInsights';
 import RecoveryCycles from './pages/RecoveryCycles';
 import Settings from './pages/Settings';
+import PrivacyPage from './pages/PrivacyPage';
 import LandingPage from './pages/LandingPage';
 import { supabase, enableAutoRefresh } from './supabaseClient';
-import { Zap, Menu, Bell, LogOut, Settings as SettingsIcon, User, Search } from 'lucide-react';
+import { Zap, Menu, Bell, LogOut, Settings as SettingsIcon, User, Search, Coffee, Moon } from 'lucide-react';
 
 const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, userEmail, userId }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isReasoningOpen, setReasoningOpen] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [snapshot, setSnapshot] = useState(null);
+  const [forecast, setForecast] = useState([]);
+  const [garden, setGarden] = useState(null);
+  const [isPulseOpen, setIsPulseOpen] = useState(false);
+  const [isWhyOpen, setIsWhyOpen] = useState(false);
+  const [isEveningOpen, setIsEveningOpen] = useState(false);
+  const [isDopamineOpen, setIsDopamineOpen] = useState(false);
+  const [isExtensionOpen, setIsExtensionOpen] = useState(false);
+  const [extensionTask, setExtensionTask] = useState(null);
+  const [isShrinkOpen, setIsShrinkOpen] = useState(false);
+  const [shrinkTargetTask, setShrinkTargetTask] = useState(null);
+  const [selectedForecastDay, setSelectedForecastDay] = useState(null);
+  const [activePersona, setActivePersona] = useState('demo');
+  const [personaLoading, setPersonaLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleSwitchPersona = async (persona) => {
+    setActivePersona(persona);
+    setPersonaLoading(true);
+    const effectiveUserId = userId || 'demo_student';
+    try {
+      await seedDemoProfile(persona, effectiveUserId);
+      await fetchSpoonData();
+    } catch (e) {
+      console.warn('Failed to seed persona:', e);
+    } finally {
+      setPersonaLoading(false);
+    }
+  };
+
+  // Load SpoonSense snapshot, 7-day forecast, and forgiving garden
+  const fetchSpoonData = async () => {
+    try {
+      const effectiveUserId = userId || 'demo_student';
+      const [snapData, forecastData, gardenData] = await Promise.all([
+        getTodaySnapshot(effectiveUserId).catch(() => null),
+        getForecast(effectiveUserId).catch(() => null),
+        getGarden(effectiveUserId).catch(() => null),
+      ]);
+      if (snapData) setSnapshot(snapData);
+      if (forecastData && forecastData.forecast) {
+        setForecast(forecastData.forecast);
+      }
+      if (gardenData && gardenData.garden) {
+        setGarden(gardenData.garden);
+      }
+    } catch (e) {
+      console.warn('Could not load SpoonSense data:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchSpoonData();
+  }, [userId]);
+
+  const handleGameCompleted = async (result) => {
+    console.log('Game probe completed:', result);
+    await fetchSpoonData();
+  };
+
+  const handleOverrideSpoons = async (newSpoons) => {
+    try {
+      const effectiveUserId = userId || 'demo_student';
+      await overrideSpoons(effectiveUserId, newSpoons);
+      await fetchSpoonData();
+    } catch (err) {
+      console.error('Failed to update spoon override:', err);
+    }
+  };
+
+  const handleOpenShrink = (task) => {
+    setShrinkTargetTask(task);
+    setIsShrinkOpen(true);
+  };
+
+  const handleShrinkStepCompleted = async (stepInfo) => {
+    // Update garden after step completion
+    const effectiveUserId = userId || 'demo_student';
+    try {
+      const gardenData = await getGarden(effectiveUserId);
+      if (gardenData && gardenData.garden) {
+        setGarden(gardenData.garden);
+      }
+    } catch (e) {
+      console.warn('Garden refresh after shrink step:', e);
+    }
+  };
 
   // Helper functions for status types
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
@@ -107,55 +205,165 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
       case '/dashboard':
         return (
           <div className="max-w-[1400px] mx-auto space-y-6 pb-20 animate-in fade-in duration-500">
-            {/* Welcome Banner */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            {/* Welcome Banner & Demo Persona Switcher (FEAT-A3) */}
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/40 border border-white/[0.06]">
               <div>
-                <h2 className="text-2xl font-semibold text-white">
-                  {getGreeting()}, <span className="text-emerald-400">{userName || 'User'}</span>
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-semibold text-white">
+                    {getGreeting()}, <span className="text-emerald-400">{activePersona === 'aarav' ? 'Aarav Sharma' : activePersona === 'meera' ? 'Meera Patel' : userName || 'User'}</span>
+                  </h2>
+                  {activePersona !== 'demo' && (
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                      {activePersona} Profile Active
+                    </span>
+                  )}
+                </div>
                 <p className="text-slate-400 text-sm mt-1">
-                  {userRole === 'parent' ? "Monitoring student's cognitive performance." : "Here's your cognitive performance overview for today."}
+                  {activePersona === 'aarav'
+                    ? "Heavy Commute Student: 240m daily crowded transit + 9h campus -> 2.4 Spoons (Stormy Weather)."
+                    : activePersona === 'meera'
+                    ? "Walk-to-Campus Student: 20m daily walk + 9h campus -> 7.4 Spoons (Sunny Weather)."
+                    : "Load-aware cognitive capacity & timetable rhythm with 12-spoon daily budget."}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-xs font-medium text-emerald-400">Live Sync</span>
+
+              {/* Persona Switcher Buttons for Hackathon Demo */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-800/80 border border-white/10 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 px-1.5">Preset:</span>
+                  <button
+                    onClick={() => handleSwitchPersona('aarav')}
+                    disabled={personaLoading}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-all text-xs flex items-center gap-1.5 ${
+                      activePersona === 'aarav'
+                        ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 font-semibold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Aarav: 4hr daily transit -> 2.4 spoons, Stormy"
+                  >
+                    <span>🚆 Aarav (4h Transit)</span>
+                  </button>
+                  <button
+                    onClick={() => handleSwitchPersona('meera')}
+                    disabled={personaLoading}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-all text-xs flex items-center gap-1.5 ${
+                      activePersona === 'meera'
+                        ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Meera: 10min walk -> 7.4 spoons, Sunny"
+                  >
+                    <span>🚶 Meera (Walk)</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsDopamineOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition-all text-xs font-semibold shadow-sm"
+                    title="Low-friction micro-activities off-ramp"
+                  >
+                    <Coffee className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Dopamine Menu</span>
+                  </button>
+                  <button
+                    onClick={() => setIsEveningOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 hover:bg-purple-500/25 transition-all text-xs font-semibold shadow-sm"
+                    title="One-tap 10s evening check-in"
+                  >
+                    <Moon className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Evening</span>
+                  </button>
+                  <button
+                    onClick={() => setIsPulseOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition-all text-xs font-semibold shadow-sm"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
+                    <span>20s Pulse</span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Metric Cards Row */}
+            {/* SpoonSense 7-Day Energy Weather Strip (FEAT-A3, FEAT-E1) */}
+            <EnergyWeatherBar
+              forecast={forecast}
+              selectedDate={selectedForecastDay?.date}
+              onSelectDate={(day) => {
+                setSelectedForecastDay(day);
+                setIsWhyOpen(true);
+              }}
+            />
+
+            {/* SpoonSense 12-Spoon Capacity Meter (FEAT-E1) */}
+            <SpoonMeter
+              snapshot={snapshot}
+              onOpenWhy={() => setIsWhyOpen(true)}
+              onOpenPulse={() => setIsPulseOpen(true)}
+              onOverrideSpoons={handleOverrideSpoons}
+            />
+
+            {/* The Forgiving Garden (FEAT-E2) — Streak that never wilts */}
+            <ForgivingGarden
+              garden={garden}
+              userId={userId || 'demo_student'}
+              onGardenUpdate={(g) => setGarden(g)}
+            />
+
+            {/* Cognitive Reality Metrics Row (Replacing clinical diagnostic cards with Zero-Shame load metrics) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
-                title="Tone Analysis"
-                value={metrics?.tone?.value || 'Neutral'}
-                unit={metrics?.tone?.unit || 'No Data'}
-                type={metrics?.tone?.type || 'success'}
+                title="Energy Weather"
+                value={
+                  snapshot?.weather === 'sunny'
+                    ? 'Sunny'
+                    : snapshot?.weather === 'partly_cloudy'
+                    ? 'Partly Cloudy'
+                    : snapshot?.weather === 'cloudy'
+                    ? 'Rainy'
+                    : snapshot?.weather === 'stormy'
+                    ? 'Stormy'
+                    : 'Clear'
+                }
+                unit={snapshot?.range_text || 'Active Forecast'}
+                type="success"
                 icon="focus"
               />
               <MetricCard
-                title="Stress Level"
-                value={metrics?.stress?.value || 'Low'}
-                unit={metrics?.stress?.unit || 'Score'}
-                type={metrics?.stress?.type || 'success'}
-                icon="burnout"
-              />
-              <MetricCard
-                title="Depression Risk"
-                value={metrics?.depression?.value || 'None'}
-                unit={metrics?.depression?.unit || 'Score'}
-                type={metrics?.depression?.type || 'success'}
+                title="Transit Load"
+                value={
+                  snapshot?.factors?.commute_cost
+                    ? `-${snapshot.factors.commute_cost.toFixed(1)} Sp`
+                    : '0.0 Sp'
+                }
+                unit={
+                  snapshot?.factors?.commute_cost > 0
+                    ? 'Transit & Crowd'
+                    : 'Zero Transit / WFH'
+                }
+                type="warning"
                 icon="recovery"
               />
               <MetricCard
-                title="Anxiety Level"
-                value={metrics?.anxiety?.value || 'Stable'}
-                unit={metrics?.anxiety?.unit || 'Score'}
-                type={metrics?.anxiety?.type || 'success'}
+                title="Campus Load"
+                value={
+                  snapshot?.factors?.campus_cost
+                    ? `-${snapshot.factors.campus_cost.toFixed(1)} Sp`
+                    : '0.0 Sp'
+                }
+                unit="Lectures & Labs"
+                type="warning"
+                icon="burnout"
+              />
+              <MetricCard
+                title="Protected Buffer"
+                value={
+                  snapshot
+                    ? `${(Math.min(2.4, (snapshot.live_spoons || snapshot.prior_spoons || 6.0) * 0.2)).toFixed(1)} Sp`
+                    : '1.2 Sp'
+                }
+                unit="20% Burnout Protection"
+                type="success"
                 icon="risk"
               />
             </div>
@@ -179,9 +387,9 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
                 className="lg:col-span-8 flex flex-col justify-center min-h-[320px]"
               >
                 <div className="mb-6">
-                  <h3 className="text-xl font-semibold text-white mb-1">Neural Synchronization</h3>
+                  <h3 className="text-xl font-semibold text-white mb-1">Neural Assistant</h3>
                   <p className="text-slate-400 text-sm">
-                    Your cognitive bandwidth is <span className="text-emerald-400 font-medium">{energyLevel}%</span>. Tell me what you need help with.
+                    Operating at <span className="text-violet-300 font-medium">{(snapshot?.live_spoons ?? snapshot?.prior_spoons ?? 6.0).toFixed(1)} spoons</span> budget. Ask to break down tasks, plan around transit, or micro-shrink assignments.
                   </p>
                 </div>
                 {userRole !== 'parent' && <ChatInput onSendMessage={handleSendMessage} onAnalysisComplete={updateDashboardFromAPI} userId={userId} />}
@@ -213,12 +421,18 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-5xl mx-auto h-full flex flex-col"
+            className="max-w-5xl mx-auto h-full flex flex-col space-y-6 pb-20"
           >
-            <h2 className="text-2xl font-semibold mb-6 text-white">Task Management</h2>
-            <div className="flex-1 bg-slate-800/40 border border-white/[0.06] rounded-2xl p-6 overflow-hidden">
-              <SmartCalendar />
-            </div>
+            <TaskPlanner
+              userId={userId || 'demo_student'}
+              snapshot={snapshot}
+              onOpenExtension={(t) => {
+                setExtensionTask(t);
+                setIsExtensionOpen(true);
+              }}
+              onOpenDopamine={() => setIsDopamineOpen(true)}
+              onOpenShrink={handleOpenShrink}
+            />
           </motion.div>
         );
       case '/insights':
@@ -320,6 +534,50 @@ const DashboardLayout = ({ theme, userRole, energyLevel, metrics, userName, user
 
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide relative bg-[#0a0e1a]">
           {renderContent()}
+
+          {/* SpoonSense Global Modals */}
+          <PulseGameModal
+            isOpen={isPulseOpen}
+            onClose={() => setIsPulseOpen(false)}
+            userId={userId || 'demo_student'}
+            onComplete={handleGameCompleted}
+          />
+
+          <WhyPanelModal
+            isOpen={isWhyOpen}
+            onClose={() => setIsWhyOpen(false)}
+            snapshot={selectedForecastDay || snapshot}
+          />
+
+          <EveningCheckinModal
+            isOpen={isEveningOpen}
+            onClose={() => setIsEveningOpen(false)}
+            userId={userId || 'demo_student'}
+            onCheckinSuccess={fetchSpoonData}
+          />
+
+          <DopamineMenuModal
+            isOpen={isDopamineOpen}
+            onClose={() => setIsDopamineOpen(false)}
+            userId={userId || 'demo_student'}
+            onEngageSuccess={fetchSpoonData}
+          />
+
+          <ExtensionEmailModal
+            isOpen={isExtensionOpen}
+            onClose={() => setIsExtensionOpen(false)}
+            initialData={extensionTask || {}}
+            userName={userName}
+          />
+
+          <TaskShrinkerModal
+            isOpen={isShrinkOpen}
+            onClose={() => { setIsShrinkOpen(false); setShrinkTargetTask(null); }}
+            task={shrinkTargetTask}
+            userId={userId || 'demo_student'}
+            liveSpoons={snapshot?.live_spoons ?? snapshot?.prior_spoons ?? 6.0}
+            onStepCompleted={handleShrinkStepCompleted}
+          />
         </div>
       </main>
     </div>
@@ -502,7 +760,9 @@ const App = () => {
       <Route path="/tasks" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
       <Route path="/insights" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
       <Route path="/recovery" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+      {/* Settings & Privacy Pages */}
       <Route path="/settings" element={session ? <DashboardLayout {...layoutProps} /> : <Navigate to="/login" />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" />} />
