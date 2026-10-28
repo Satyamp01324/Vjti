@@ -791,6 +791,9 @@ const App = () => {
                   <VertixDashboard
                     userName={userName || 'Code XR'}
                     userEmail={userEmail || 'hello@codexr.studio'}
+                    energyLevel={energyLevel}
+                    metrics={metrics}
+                    userId={session?.user?.id || 'demo_student'}
                     onLogout={async () => {
                       try {
                         await supabase.auth.signOut();
